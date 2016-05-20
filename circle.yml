@@ -1,0 +1,8 @@
+machine:
+  ruby:
+    version:
+      2.1.9
+dependencies:
+  pre:
+    - rvm @global do gem uninstall bundler -a -x
+    - rvm @global do gem install bundler -v 1.10.6
