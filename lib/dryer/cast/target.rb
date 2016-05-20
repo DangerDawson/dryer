@@ -1,5 +1,5 @@
 module Dryer
-  module Delegate
+  module Cast
     module Target
       def initialize(sender: )
         @sender = sender
@@ -11,4 +11,3 @@ module Dryer
     end
   end
 end
-
