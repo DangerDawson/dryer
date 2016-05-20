@@ -1,5 +1,5 @@
-require 'dryer/cast/base'
-require 'dryer/cast/target'
+require "dryer/cast/base"
+require "dryer/cast/target"
 
 module Dryer
   module Cast

@@ -7,14 +7,14 @@ RSpec.describe Dryer::Constructor do
     stub_const("Four", Class.new)
   end
 
-  describe '.()' do
+  describe ".()" do
     let(:klass) do
       Class.new do
         include Dryer::Constructor(one: One, two: Two, three: Three)
       end
     end
 
-    it 'assigns each constructor arg to an ivar and defines private readers' do
+    it "assigns each constructor arg to an ivar and defines private readers" do
       expect { instance.one }.to raise_error(NoMethodError)
       expect { instance.two }.to raise_error(NoMethodError)
       expect { instance.three }.to raise_error(NoMethodError)
@@ -25,13 +25,13 @@ RSpec.describe Dryer::Constructor do
 
     context "overide constructor" do
       let!(:instance) { klass.new(three: Four) }
-      it 'assings the supplied value to the construstor arg' do
+      it "assings the supplied value to the construstor arg" do
         expect(instance.__send__(:three)).to eq(Four)
       end
 
       context "it does not memoize the passed in args" do
-        let!(:another_instance) { klass.new() }
-        it 'assings the supplied value to the construstor arg' do
+        let!(:another_instance) { klass.new }
+        it "assings the supplied value to the construstor arg" do
           puts "before instance"
           expect(another_instance.__send__(:three)).to eq(Three)
         end
@@ -39,14 +39,14 @@ RSpec.describe Dryer::Constructor do
     end
   end
 
-  describe '.Protected()' do
+  describe ".Protected()" do
     let(:klass) do
       Class.new do
         include Dryer::Constructor::Protected(one: One, two: Two, three: Three)
       end
     end
 
-    it 'assigns each constructor arg to an ivar and defines protected readers' do
+    it "assigns each constructor arg to an ivar and defines protected readers" do
       expect { instance.one }.to raise_error(NoMethodError)
       expect { instance.two }.to raise_error(NoMethodError)
       expect { instance.three }.to raise_error(NoMethodError)
@@ -57,12 +57,12 @@ RSpec.describe Dryer::Constructor do
 
     context "can overide constructor" do
       let(:instance) { klass.new(three: Four) }
-      it 'assings the supplied value to the construstor arg' do
+      it "assings the supplied value to the construstor arg" do
         expect(instance.__send__(:three)).to eq(Four)
       end
       context "it does not memoize the passed in args" do
-        let!(:another_instance) { klass.new() }
-        it 'assings the supplied value to the construstor arg' do
+        let!(:another_instance) { klass.new }
+        it "assings the supplied value to the construstor arg" do
           puts "before instance"
           expect(another_instance.__send__(:three)).to eq(Three)
         end
@@ -70,14 +70,14 @@ RSpec.describe Dryer::Constructor do
     end
   end
 
-  describe '.Public()' do
+  describe ".Public()" do
     let(:klass) do
       Class.new do
         include Dryer::Constructor::Public(one: One, two: Two, three: Three)
       end
     end
 
-    it 'assigns each constructor arg to an ivar and defines public readers' do
+    it "assigns each constructor arg to an ivar and defines public readers" do
       expect(instance.one).to eq(One)
       expect(instance.two).to eq(Two)
       expect(instance.three).to eq(Three)
@@ -88,12 +88,12 @@ RSpec.describe Dryer::Constructor do
 
     context "can overide constructor" do
       let(:instance) { klass.new(three: Four) }
-      it 'assings the supplied value to the construstor arg' do
+      it "assings the supplied value to the construstor arg" do
         expect(instance.three).to eq(Four)
       end
       context "it does not memoize the passed in args" do
-        let!(:another_instance) { klass.new() }
-        it 'assings the supplied value to the construstor arg' do
+        let!(:another_instance) { klass.new }
+        it "assings the supplied value to the construstor arg" do
           puts "before instance"
           expect(another_instance.__send__(:three)).to eq(Three)
         end

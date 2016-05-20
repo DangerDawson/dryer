@@ -101,6 +101,7 @@ RSpec.describe Dryer::Cast::Base do
         end
       end
     end
+
     describe "#cast_private" do
       let(:instance) { klass.new }
       let(:foobar_instance) { double(:target, call: :bar) }
