@@ -1,10 +1,10 @@
 module Dryer
-  module Delegate
-    def self.Send(base_module)
-      ::Dryer::Delegate::Send.new(base_module)
+  module Cast
+    def self.base(root_module: nil)
+      ::Dryer::Cast::Base.new(root_module)
     end
 
-    class Send < Module
+    class Base < Module
       attr_reader :base_module
       def initialize(base_module)
         @base_module = base_module
