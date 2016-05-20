@@ -16,7 +16,7 @@ module Dryer
 
       def define_macro(klass)
         local_base_module = base_module
-        klass.define_singleton_method :dryer_delegate do |*macro_args, &_macro_block|
+        klass.define_singleton_method :cast do |*macro_args, &_macro_block|
           name = macro_args.shift
           options = macro_args.shift || {}
           explicit_klass = options[:class_name]
