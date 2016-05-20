@@ -15,7 +15,7 @@ RSpec.describe Dryer::Cast::Base do
 
     describe "#cast" do
       context "with implicit class name" do
-        let(:intance) { klass.new }
+        let(:instance) { klass.new }
         let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
         before do
           stub_const("Foobar", foobar)
@@ -24,7 +24,7 @@ RSpec.describe Dryer::Cast::Base do
           end
         end
         it "defines the casted method" do
-          expect(intance.foobar).to eq :bar
+          expect(instance.foobar).to eq :bar
         end
 
         context "with namespace" do
@@ -41,13 +41,13 @@ RSpec.describe Dryer::Cast::Base do
             end
           end
           it "defines the casted method" do
-            expect(intance.foobar).to eq :bar
+            expect(instance.foobar).to eq :bar
           end
         end
       end
 
       context "with explicit class name" do
-        let(:intance) { klass.new }
+        let(:instance) { klass.new }
         let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
         before do
           stub_const("Explicit", foobar)
@@ -56,7 +56,7 @@ RSpec.describe Dryer::Cast::Base do
           end
         end
         it "defines the casted method" do
-          expect(intance.foobar).to eq :bar
+          expect(instance.foobar).to eq :bar
         end
 
         context "with namespace" do
@@ -71,13 +71,13 @@ RSpec.describe Dryer::Cast::Base do
             end
           end
           it "defines the casted method" do
-            expect(intance.foobar).to eq :bar
+            expect(instance.foobar).to eq :bar
           end
         end
       end
 
       context "arity" do
-        let(:intance) { klass.new }
+        let(:instance) { klass.new }
         let(:foobar_instance) { double(:target, call: :bar) }
         let(:foobar) { double("Foobar", new: foobar_instance) }
         before do
@@ -90,15 +90,31 @@ RSpec.describe Dryer::Cast::Base do
         context "with arity greater than zero" do
           it "defines the casted method" do
             expect(foobar_instance).to receive(:call).with(param: 1)
-            intance.foobar(param: 1)
+            instance.foobar(param: 1)
           end
         end
         context "with arity of zero" do
           it "defines the casted method" do
             expect(foobar_instance).to receive(:call).with(no_args)
-            intance.foobar
+            instance.foobar
           end
         end
+      end
+    end
+    describe "#cast_private" do
+      let(:instance) { klass.new }
+      let(:foobar_instance) { double(:target, call: :bar) }
+      let(:foobar) { double("Foobar", new: foobar_instance) }
+      before do
+        stub_const("Foobar", foobar)
+        klass.class_eval do
+          cast_private :foobar
+        end
+      end
+
+      it "defines the casted method" do
+        expect { instance.foobar }.to raise_error(NoMethodError)
+        expect(instance.__send__(:foobar)).to eq(:bar)
       end
     end
   end
