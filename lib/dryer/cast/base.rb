@@ -1,13 +1,14 @@
+require 'active_support/core_ext/string'
 module Dryer
   module Cast
-    def self.base(root_module: nil)
-      ::Dryer::Cast::Base.new(root_module)
+    def self.base(namespace: nil)
+      ::Dryer::Cast::Base.new(namespace)
     end
 
     class Base < Module
-      attr_reader :base_module
-      def initialize(base_module)
-        @base_module = base_module
+      attr_reader :namespace
+      def initialize(namespace)
+        @namespace = namespace
       end
 
       def included(klass)
@@ -15,14 +16,14 @@ module Dryer
       end
 
       def define_macro(klass)
-        local_base_module = base_module
+        local_namespace = namespace
         klass.define_singleton_method :cast do |*macro_args, &_macro_block|
           name = macro_args.shift
           options = macro_args.shift || {}
           explicit_klass = options[:class_name]
 
           define_method(name) do |*args, &block|
-            implicit_klass = [local_base_module, name.to_s.classify].join("::")
+            implicit_klass = [local_namespace, name.to_s.classify].join("::")
             delegate_klass = explicit_klass ? explicit_klass : implicit_klass
             delegate_instance = delegate_klass.constantize.new(sender: self)
 
