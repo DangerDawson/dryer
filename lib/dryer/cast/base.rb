@@ -1,4 +1,4 @@
-require 'active_support/core_ext/string'
+require "active_support/core_ext/string"
 module Dryer
   module Cast
     def self.base(namespace: nil)
@@ -52,10 +52,7 @@ module Dryer
           end
           __send__(:private, name)
         end
-
-
       end
-
     end
   end
 end

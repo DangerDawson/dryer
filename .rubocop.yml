@@ -1,3 +1,6 @@
+AllCops:
+  TargetRubyVersion: 2.1
+
 Lint/HandleExceptions:
   Exclude:
     - rakelib/*.rake
@@ -24,3 +27,11 @@ Style/DotPosition:
 
 Style/ExtraSpacing:
    Enabled: false
+
+Style/FileName:
+  Exclude:
+    - lib/dryer/constructor.rb
+
+Style/MethodName:
+  Exclude:
+    - lib/dryer/constructor.rb
