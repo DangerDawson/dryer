@@ -1,4 +1,4 @@
-require 'dryer/cast/send'
+require 'dryer/cast/base'
 require 'dryer/cast/target'
 
 module Dryer
