@@ -1,0 +1,40 @@
+module Dryer
+  module Delegate
+    def self.Send(base_module)
+      ::Dryer::Delegate::Send.new(base_module)
+    end
+
+    class Send < Module
+      attr_reader :base_module
+      def initialize(base_module)
+        @base_module = base_module
+      end
+
+      def included(klass)
+        define_macro(klass)
+      end
+
+      def define_macro(klass)
+        local_base_module = base_module
+        klass.define_singleton_method :dryer_delegate do |*args, &_block|
+          name = args.shift
+          options = args.shift || {}
+          explicit_klass = options[:class_name]
+
+          define_method(name) do |*more_args, &block|
+            implicit_klass = [local_base_module, name.to_s.classify].join("::")
+            delegate_klass = explicit_klass ? explicit_klass : implicit_klass
+            delegate_instance = delegate_klass.constantize.new(sender: self)
+
+            if delegate_instance.method(:call).arity.zero?
+              delegate_instance.call(&block)
+            else
+              delegate_instance.call(*args, &block)
+            end
+          end
+        end
+      end
+
+    end
+  end
+end
