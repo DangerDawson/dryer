@@ -16,12 +16,12 @@ module Dryer
 
       def define_macro(klass)
         local_base_module = base_module
-        klass.define_singleton_method :dryer_delegate do |*args, &_block|
-          name = args.shift
-          options = args.shift || {}
+        klass.define_singleton_method :dryer_delegate do |*macro_args, &_macro_block|
+          name = macro_args.shift
+          options = macro_args.shift || {}
           explicit_klass = options[:class_name]
 
-          define_method(name) do |*more_args, &block|
+          define_method(name) do |*args, &block|
             implicit_klass = [local_base_module, name.to_s.classify].join("::")
             delegate_klass = explicit_klass ? explicit_klass : implicit_klass
             delegate_instance = delegate_klass.constantize.new(sender: self)
