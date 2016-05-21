@@ -133,6 +133,10 @@ RSpec.describe Dryer::Cast::Base do
       it "defines the casted method" do
         expect(instance.cast_methods).to eq [:foobar]
       end
+
+      it "defines the casted method" do
+        expect(klass.cast_methods).to eq [:foobar]
+      end
     end
   end
 end
