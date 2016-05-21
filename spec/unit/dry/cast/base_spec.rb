@@ -118,7 +118,21 @@ RSpec.describe Dryer::Cast::Base do
         expect(instance.__send__(:foobar)).to eq(:bar)
       end
     end
+
+    describe ".cast_methods" do
+      let(:instance) { klass.new }
+      let(:foobar_instance) { double(:target, call: :bar) }
+      let(:foobar) { double("Foobar", new: foobar_instance) }
+      before do
+        stub_const("Foobar", foobar)
+        klass.class_eval do
+          cast :foobar
+        end
+      end
+
+      it "defines the casted method" do
+        expect(instance.cast_methods).to eq [:foobar]
+      end
+    end
   end
 end
-
-# arity
