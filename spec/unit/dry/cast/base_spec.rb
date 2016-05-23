@@ -52,7 +52,7 @@ RSpec.describe Dryer::Cast::Base do
         before do
           stub_const("Explicit", foobar)
           klass.class_eval do
-            cast :foobar, class_name: "Explicit"
+            cast :foobar, to: "Explicit"
           end
         end
         it "defines the casted method" do
@@ -67,7 +67,7 @@ RSpec.describe Dryer::Cast::Base do
           end
           before do
             klass.class_eval do
-              cast :foobar, class_name: "Explicit"
+              cast :foobar, to: "Explicit"
             end
           end
           it "defines the casted method" do

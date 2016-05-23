@@ -33,12 +33,12 @@ module Dryer
         klass.define_singleton_method mode do |*macro_args, &_macro_block|
           name = macro_args.shift
           options = macro_args.shift || {}
-          explicit_klass = options[:class_name]
+          explicit_klass = options[:to]
 
           define_method(name) do |*args, &method_block|
             implicit_klass = [local_namespace, name.to_s.classify].join("::")
             delegate_klass = explicit_klass ? explicit_klass : implicit_klass
-            delegate_instance = delegate_klass.constantize.new(sender: self)
+            delegate_instance = delegate_klass.constantize.new(caster: self)
 
             if delegate_instance.method(:call).arity.zero?
               delegate_instance.call(&method_block)
