@@ -17,6 +17,7 @@ GEM
     diff-lcs (1.2.5)
     i18n (0.7.0)
     json (1.8.3)
+    log_buddy (0.7.0)
     method_source (0.8.2)
     minitest (5.8.4)
     parser (2.3.1.0)
@@ -61,7 +62,11 @@ DEPENDENCIES
   activesupport
   bundler
   dryer!
+  log_buddy
   pry
   rake
   rspec
   rubocop
+
+BUNDLED WITH
+   1.11.2
