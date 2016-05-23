@@ -180,7 +180,8 @@ RSpec.describe Dryer::Cast::Base do
           expect(instance.foobar).to eq :bar
         end
       end
-      context "with namespace" do
+
+      context "with namespace:" do
         let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar_foobar)) }
         let(:cast_group_args) { { namespace: "Bar" } }
         before { stub_const("Bar::Foobar", foobar) }
@@ -189,13 +190,23 @@ RSpec.describe Dryer::Cast::Base do
         end
       end
 
-      context "with explicit namespace" do
-        let(:foobar) { double("Bar::Zebra", new: double(:target, call: :bar_foobar)) }
+      context "with namespace and explicit to:" do
+        let(:foobar) { double("Bar::Zebra", new: double(:target, call: :bar_zebra)) }
         let(:cast_group_args) { { namespace: "Bar" } }
         let(:cast_args) { { to: "Zebra" } }
         before { stub_const("Bar::Zebra", foobar) }
         it "defines the casted method" do
-          expect(instance.foobar).to eq :bar_foobar
+          expect(instance.foobar).to eq :bar_zebra
+        end
+      end
+
+      context "with access:" do
+        let(:foobar) { double("Foobar", new: double(:target, call: :foobar)) }
+        let(:cast_group_args) { { access: :private } }
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method" do
+          expect { instance.foobar }.to raise_error(NoMethodError)
+          expect(instance.__send__(:foobar)).to eq(:foobar)
         end
       end
     end
