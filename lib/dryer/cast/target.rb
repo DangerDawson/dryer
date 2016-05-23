@@ -1,13 +1,13 @@
 module Dryer
   module Cast
     module Target
-      def initialize(sender: )
-        @sender = sender
+      def initialize(caster: )
+        @caster = caster
       end
 
       private
 
-      attr_reader :sender
+      attr_reader :caster
     end
   end
 end
