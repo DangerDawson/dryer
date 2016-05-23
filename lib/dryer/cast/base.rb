@@ -23,8 +23,15 @@ module Dryer
       end
 
       def define_macro(klass)
+        define_cast_group_singleton(klass)
         define_cast_singleton(klass, :cast, :public)
         define_cast_singleton(klass, :cast_private, :private)
+      end
+
+      def define_cast_group_singleton(klass)
+        klass.define_singleton_method :cast_group do |*args, &block|
+          block.call
+        end
       end
 
       def define_cast_singleton(klass, mode, visibility, &block)
@@ -34,11 +41,18 @@ module Dryer
           name = macro_args.shift
           options = macro_args.shift || {}
           explicit_klass = options[:to]
+          constructor_args = options[:with] || []
 
           define_method(name) do |*args, &method_block|
             implicit_klass = [local_namespace, name.to_s.classify].join("::")
             delegate_klass = explicit_klass ? explicit_klass : implicit_klass
-            delegate_instance = delegate_klass.constantize.new(caster: self)
+
+            constructor_params = constructor_args.each_with_object({}) do |method, object| 
+              object[method] = send(method)
+            end
+
+            constructor_params[:caster] = self
+            delegate_instance = delegate_klass.constantize.new(constructor_params)
 
             if delegate_instance.method(:call).arity.zero?
               delegate_instance.call(&method_block)

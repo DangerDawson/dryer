@@ -44,6 +44,24 @@ RSpec.describe Dryer::Cast::Base do
             expect(instance.foobar).to eq :bar
           end
         end
+
+        # [:method1]
+        # [method1: :local_method]
+        # [method1, method2: :local_method]
+        # :method1
+        context "with 'with'" do
+          before do
+            stub_const("Bar::Foobar", foobar)
+            klass.class_eval do
+              cast :foobar, with: [:method1]
+              def method1; "value"; end
+            end
+          end
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).with(method1: instance.method1, caster: instance)
+            expect(instance.foobar).to eq :bar
+          end
+        end
       end
 
       context "with explicit class name" do
@@ -138,5 +156,41 @@ RSpec.describe Dryer::Cast::Base do
         expect(klass.cast_methods).to eq [:foobar]
       end
     end
+
+    describe "#cast_group" do
+      let(:klass_eval) do
+        Proc.new do |cast_group_args|
+          klass.class_eval do
+            cast_group cast_group_args do
+              cast :foobar
+            end
+          end
+        end
+      end
+      let(:instance) { klass.new }
+      let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
+      let!(:cast_group_args) { {} }
+      before do
+        klass_eval.call(cast_group_args)
+      end
+
+      context "with no args" do
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method" do
+          expect(instance.foobar).to eq :bar
+        end
+      end
+
+      #context "with namespace" do
+      #  let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar)) }
+      #  let(:cast_group_args) { {namespace: "Bar"} }
+      #  before { stub_const("Bar::Foobar", foobar) }
+      #  it "defines the casted method" do
+      #    expect(instance.foobar).to eq :bar
+      #  end
+      #end
+    end
+
+    # TODO: visibility
   end
 end
