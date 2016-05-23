@@ -156,24 +156,6 @@ RSpec.describe Dryer::Cast::Base do
       end
     end
 
-    #    describe "#cast_private" do
-    #      let(:instance) { klass.new }
-    #      let(:foobar_instance) { double(:target, call: :bar) }
-    #      let(:foobar) { double("Foobar", new: foobar_instance) }
-    #      before do
-    #        stub_const("Foobar", foobar)
-    #        klass.class_eval do
-    #          cast_private :foobar
-    #        end
-    #      end
-    #
-    #      it "defines the casted method" do
-    #        expect { instance.foobar }.to raise_error(NoMethodError)
-    #        expect(instance.__send__(:foobar)).to eq(:bar)
-    #      end
-    #    end
-    #########
-
     describe "#cast_group" do
       let(:klass_eval) do
         proc do |cast_group_args|
@@ -198,11 +180,11 @@ RSpec.describe Dryer::Cast::Base do
         end
       end
       context "with namespace" do
-        let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar)) }
+        let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar_foobar)) }
         let(:cast_group_args) { { namespace: "Bar" } }
         before { stub_const("Bar::Foobar", foobar) }
         it "defines the casted method" do
-          expect(instance.foobar).to eq :bar
+          expect(instance.foobar).to eq :bar_foobar
         end
       end
     end

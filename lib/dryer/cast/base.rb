@@ -23,8 +23,7 @@ module Dryer
 
       def define_macro(klass)
         define_cast_group_singleton(klass)
-        define_cast_singleton(klass, :cast, :public)
-        define_cast_singleton(klass, :cast_private, :private)
+        define_cast_singleton(klass)
       end
 
       def define_cast_group_singleton(klass)
@@ -33,9 +32,9 @@ module Dryer
         end
       end
 
-      def define_cast_singleton(klass, mode, _visibility, &block)
+      def define_cast_singleton(klass, &block)
         local_cast_methods = cast_methods
-        klass.define_singleton_method mode do |*macro_args, &_macro_block|
+        klass.define_singleton_method(:cast) do |*macro_args, &_macro_block|
           name = macro_args.shift
           options = macro_args.shift || {}
           explicit_klass = options[:to]
