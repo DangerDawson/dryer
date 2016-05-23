@@ -8,30 +8,23 @@ module Dryer
       end
 
       def wrap
-        instance_eval(&@block)
+        instance_eval(&block)
       end
 
       private
-
-      def cast_wrapper(*args)
-        @caster.cast(*merge_params(*args))
-      end
+      attr_reader :caster, :block, :defaults
 
       def cast(*args)
-        cast_wrapper(*args)
-      end
-
-      def cast_private(*args)
-        cast_wrapper(*args)
+        caster.cast(*merge_params(*args))
       end
 
       def cast_group(*args, &block)
-        caster.cast_group(*args, &block)
+        caster.cast_group(*merge_params(*args), &block)
       end
 
       def merge_params(*args)
         name = args.shift
-        args = (@defaults + args).reduce({}, :merge)
+        args = (defaults + args).reduce({}, :merge)
         [name, args]
       end
     end
