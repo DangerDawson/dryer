@@ -74,6 +74,7 @@ RSpec.describe Dryer::Cast::Base do
             end
           end
         end
+
         it "defines the casted method" do
           expect(foobar).to receive(:new).with(method: instance.method, caster: instance)
           expect(instance.foobar).to eq :bar
@@ -163,6 +164,9 @@ RSpec.describe Dryer::Cast::Base do
             cast_group cast_group_args do
               cast :foobar, cast_args
             end
+            def method
+              "value"
+            end
           end
         end
       end
@@ -207,6 +211,60 @@ RSpec.describe Dryer::Cast::Base do
         it "defines the casted method" do
           expect { instance.foobar }.to raise_error(NoMethodError)
           expect(instance.__send__(:foobar)).to eq(:foobar)
+        end
+      end
+
+      context "with with:" do
+        let(:foobar) { double("Foobar", new: double(:target, call: :foobar)) }
+        let(:cast_group_args) { { with: :method } }
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method" do
+          expect(foobar).to receive(:new).with(method: instance.method, caster: instance)
+          expect(instance.foobar).to eq :foobar
+        end
+      end
+    end
+
+    describe "#nested_cast_group" do
+      let(:klass_eval) do
+        proc do |cast_group_args, cast_group_args2, cast_args|
+          klass.class_eval do
+            cast_group cast_group_args do
+              cast_group cast_group_args2 do
+                cast :foobar, cast_args
+              end
+            end
+            def method
+              "value"
+            end
+          end
+        end
+      end
+
+      let(:instance) { klass.new }
+      let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
+      let!(:cast_group_args) { {} }
+      let!(:cast_group_args2) { {} }
+      let!(:cast_args) { {} }
+      before do
+        klass_eval.call(cast_group_args, cast_group_args2, cast_args)
+      end
+
+      context "with no args" do
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method" do
+          expect(instance.foobar).to eq :bar
+        end
+      end
+
+      context "with args" do
+        let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar)) }
+        let!(:cast_group_args) { { namespace: "Bar" } }
+        let!(:cast_group_args2) { { with: :method } }
+        before { stub_const("Bar::Foobar", foobar) }
+        it "defines the casted method" do
+          expect(foobar).to receive(:new).with(method: instance.method, caster: instance)
+          expect(instance.foobar).to eq :bar
         end
       end
     end
