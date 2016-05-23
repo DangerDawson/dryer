@@ -7,6 +7,12 @@ module Dryer
         @defaults = defaults
       end
 
+      def wrap
+        instance_eval(&@block)
+      end
+
+      private
+
       def cast_wrapper(*args)
         @caster.cast(*merge_params(*args))
       end
@@ -26,15 +32,7 @@ module Dryer
       def merge_params(*args)
         name = args.shift
         args = (@defaults + args).reduce({}, :merge)
-        namespace = args.delete(:namespace)
-        if namespace.present?
-          args[:to] = [namespace.to_s.classify, name.to_s.classify].join("::")
-        end
         [name, args]
-      end
-
-      def wrap
-        instance_eval(&@block)
       end
     end
   end
