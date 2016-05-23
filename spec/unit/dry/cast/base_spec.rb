@@ -14,97 +14,38 @@ RSpec.describe Dryer::Cast::Base do
     end
 
     describe "#cast" do
-      context "with implicit class name" do
-        let(:instance) { klass.new }
-        let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
-        before do
-          stub_const("Foobar", foobar)
+      let(:instance) { klass.new }
+      let(:to) { "Foobar" }
+      let(:foobar_instance) { double(:target, call: :bar) }
+      let(:foobar) { double(to, new: foobar_instance) }
+      let(:method) { :foobar }
+      let(:cast_args) { { to: to } }
+      let(:klass_eval) do
+        Proc.new do |method, cast_args|
           klass.class_eval do
-            cast :foobar
-          end
-        end
-        it "defines the casted method" do
-          expect(instance.foobar).to eq :bar
-        end
-
-        context "with namespace" do
-          let(:klass) do
-            Class.new do
-              include Dryer::Cast.base(namespace: "Bar")
-            end
-          end
-          let(:name_space_foobar) { double("Foobar", new: double(:target, call: :bar)) }
-          before do
-            stub_const("Bar::Foobar", foobar)
-            klass.class_eval do
-              cast :foobar
-            end
-          end
-          it "defines the casted method" do
-            expect(instance.foobar).to eq :bar
-          end
-        end
-
-        # [:method1]
-        # [method1: :local_method]
-        # [method1, method2: :local_method]
-        # :method1
-        context "with 'with'" do
-          before do
-            stub_const("Bar::Foobar", foobar)
-            klass.class_eval do
-              cast :foobar, with: [:method1]
-              def method1; "value"; end
-            end
-          end
-          it "defines the casted method" do
-            expect(foobar).to receive(:new).with(method1: instance.method1, caster: instance)
-            expect(instance.foobar).to eq :bar
+            cast method, cast_args
           end
         end
       end
 
-      context "with explicit class name" do
-        let(:instance) { klass.new }
-        let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
-        before do
-          stub_const("Explicit", foobar)
-          klass.class_eval do
-            cast :foobar, to: "Explicit"
-          end
-        end
-        it "defines the casted method" do
-          expect(instance.foobar).to eq :bar
-        end
+      before do
+        klass_eval.call(method, cast_args)
+        stub_const(to, foobar)
+      end
 
-        context "with namespace" do
-          let(:klass) do
-            Class.new do
-              include Dryer::Cast.base(namespace: "Bar")
-            end
-          end
-          before do
-            klass.class_eval do
-              cast :foobar, to: "Explicit"
-            end
-          end
-          it "defines the casted method" do
-            expect(instance.foobar).to eq :bar
-          end
+      it "defines the casted method" do
+        expect(instance.foobar).to eq :bar
+      end
+
+      context "param 'to': not present" do
+        let(:cast_args) { }
+
+        it "infers the to class from the name" do
+          expect(instance.foobar).to eq :bar
         end
       end
 
       context "arity" do
-        let(:instance) { klass.new }
-        let(:foobar_instance) { double(:target, call: :bar) }
-        let(:foobar) { double("Foobar", new: foobar_instance) }
-        before do
-          stub_const("Foobar", foobar)
-          klass.class_eval do
-            cast :foobar
-          end
-        end
-
         context "with arity greater than zero" do
           it "defines the casted method" do
             expect(foobar_instance).to receive(:call).with(param: 1)
@@ -118,79 +59,140 @@ RSpec.describe Dryer::Cast::Base do
           end
         end
       end
-    end
 
-    describe "#cast_private" do
-      let(:instance) { klass.new }
-      let(:foobar_instance) { double(:target, call: :bar) }
-      let(:foobar) { double("Foobar", new: foobar_instance) }
-      before do
-        stub_const("Foobar", foobar)
-        klass.class_eval do
-          cast_private :foobar
-        end
-      end
-
-      it "defines the casted method" do
-        expect { instance.foobar }.to raise_error(NoMethodError)
-        expect(instance.__send__(:foobar)).to eq(:bar)
-      end
-    end
-
-    describe ".cast_methods" do
-      let(:instance) { klass.new }
-      let(:foobar_instance) { double(:target, call: :bar) }
-      let(:foobar) { double("Foobar", new: foobar_instance) }
-      before do
-        stub_const("Foobar", foobar)
-        klass.class_eval do
-          cast :foobar
-        end
-      end
-
-      it "defines the casted method" do
-        expect(instance.cast_methods).to eq [:foobar]
-      end
-
-      it "defines the casted method" do
-        expect(klass.cast_methods).to eq [:foobar]
-      end
-    end
-
-    describe "#cast_group" do
-      let(:klass_eval) do
-        Proc.new do |cast_group_args|
+      context "param 'with:'" do
+        let(:with_args) { [:method] }
+        let(:cast_args) { { to: to, with: with_args } }
+        before do
           klass.class_eval do
-            cast_group cast_group_args do
-              cast :foobar
-            end
+            def method; "value"; end
+            def local_method; "another_value"; end
+          end
+        end
+        it "defines the casted method" do
+          expect(foobar).to receive(:new).with(method: instance.method, caster: instance)
+          expect(instance.foobar).to eq :bar
+        end
+
+        context "single arg" do
+          let(:with_args) { :method }
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).with(method: instance.method, caster: instance)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+
+        context "hash arg" do
+          let(:with_args) { [method: :local_method] }
+
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).with(method: instance.local_method, caster: instance)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+
+        context "mixed args" do
+          let(:with_args) { [:method, another_method: :local_method] }
+
+          it "defines the casted method" do
+            expected_args = { method: instance.method, another_method: instance.local_method }
+            expect(foobar).to receive(:new).with(expected_args.merge(caster: instance))
+            expect(instance.foobar).to eq :bar
+          end
+        end
+
+        context "no args" do
+          let(:with_args) { }
+
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).with(caster: instance)
+            expect(instance.foobar).to eq :bar
           end
         end
       end
-      let(:instance) { klass.new }
-      let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
-      let!(:cast_group_args) { {} }
-      before do
-        klass_eval.call(cast_group_args)
-      end
 
-      context "with no args" do
-        before { stub_const("Foobar", foobar) }
-        it "defines the casted method" do
-          expect(instance.foobar).to eq :bar
+      context "param 'access:'" do
+        let(:cast_args) { { to: to, access: access_args } }
+
+        context "public" do
+          let(:access_args) { :public }
+
+          it "ensures the cast method is public" do
+            expect(instance.foobar).to eq :bar
+          end
+        end
+
+        context "private" do
+          let(:access_args) { :private }
+
+          it "ensures the cast method is private" do
+            expect { instance.foobar }.to raise_error(NoMethodError)
+            expect(instance.__send__(:foobar)).to eq(:bar)
+          end
+        end
+
+        context "no args" do
+          let(:cast_args) { { to: to } }
+
+          it "ensures the cast method is public" do
+            expect(instance.foobar).to eq :bar
+          end
         end
       end
 
-      #context "with namespace" do
-      #  let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar)) }
-      #  let(:cast_group_args) { {namespace: "Bar"} }
-      #  before { stub_const("Bar::Foobar", foobar) }
-      #  it "defines the casted method" do
-      #    expect(instance.foobar).to eq :bar
-      #  end
-      #end
+      describe ".cast_methods" do
+        it "defines the casted method" do
+          expect(instance.cast_methods).to eq [:foobar]
+        end
+
+        it "defines the casted method" do
+          expect(klass.cast_methods).to eq [:foobar]
+        end
+      end
     end
 
-    # TODO: visibility
+#    describe "#cast_private" do
+#      let(:instance) { klass.new }
+#      let(:foobar_instance) { double(:target, call: :bar) }
+#      let(:foobar) { double("Foobar", new: foobar_instance) }
+#      before do
+#        stub_const("Foobar", foobar)
+#        klass.class_eval do
+#          cast_private :foobar
+#        end
+#      end
+#
+#      it "defines the casted method" do
+#        expect { instance.foobar }.to raise_error(NoMethodError)
+#        expect(instance.__send__(:foobar)).to eq(:bar)
+#      end
+#    end
+#########
+
+#    describe "#cast_group" do
+#      let(:klass_eval) do
+#        Proc.new do |cast_group_args|
+#          klass.class_eval do
+#            cast_group cast_group_args do
+#              cast :foobar
+#            end
+#          end
+#        end
+#      end
+#      let(:instance) { klass.new }
+#      let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
+#      let!(:cast_group_args) { {} }
+#      before do
+#        klass_eval.call(cast_group_args)
+#      end
+#
+#      context "with no args" do
+#        before { stub_const("Foobar", foobar) }
+#        it "defines the casted method" do
+#          expect(instance.foobar).to eq :bar
+#        end
+#      end
+#    end
+#
   end
 end
