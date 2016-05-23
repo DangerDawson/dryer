@@ -158,10 +158,10 @@ RSpec.describe Dryer::Cast::Base do
 
     describe "#cast_group" do
       let(:klass_eval) do
-        proc do |cast_group_args|
+        proc do |cast_group_args, cast_args|
           klass.class_eval do
             cast_group cast_group_args do
-              cast :foobar
+              cast :foobar, cast_args
             end
           end
         end
@@ -169,8 +169,9 @@ RSpec.describe Dryer::Cast::Base do
       let(:instance) { klass.new }
       let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
       let!(:cast_group_args) { {} }
+      let!(:cast_args) { {} }
       before do
-        klass_eval.call(cast_group_args)
+        klass_eval.call(cast_group_args, cast_args)
       end
 
       context "with no args" do
@@ -187,7 +188,16 @@ RSpec.describe Dryer::Cast::Base do
           expect(instance.foobar).to eq :bar_foobar
         end
       end
+
+      context "with explicit namespace" do
+        let(:foobar) { double("Bar::Zebra", new: double(:target, call: :bar_foobar)) }
+        let(:cast_group_args) { { namespace: "Bar" } }
+        let(:cast_args) { { to: "Zebra" } }
+        before { stub_const("Bar::Zebra", foobar) }
+        it "defines the casted method" do
+          expect(instance.foobar).to eq :bar_foobar
+        end
+      end
     end
-    #
   end
 end

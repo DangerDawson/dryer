@@ -37,15 +37,12 @@ module Dryer
         klass.define_singleton_method(:cast) do |*macro_args, &_macro_block|
           name = macro_args.shift
           options = macro_args.shift || {}
-          explicit_klass = options[:to]
           constructor_args = [*options[:with]]
           access = options[:access] || :public
+          namespace = options[:namespace]
+          target_klass = [namespace, options.fetch(:to, name.to_s.classify)].compact.join("::")
 
           define_method(name) do |*args, &method_block|
-            #implicit_klass = [name_space, name.to_s.classify].join("::")
-            implicit_klass = [name.to_s.classify].join("::")
-            delegate_klass = explicit_klass ? explicit_klass : implicit_klass
-
             constructor_params = constructor_args.each_with_object({}) do |method, object|
               if method.class == Hash
                 method.each_with_object(object) do |(method2, local_method), object2|
@@ -57,12 +54,12 @@ module Dryer
             end
 
             constructor_params[:caster] = self
-            delegate_instance = delegate_klass.constantize.new(constructor_params)
+            target_instance = target_klass.constantize.new(constructor_params)
 
-            if delegate_instance.method(:call).arity.zero?
-              delegate_instance.call(&method_block)
+            if target_instance.method(:call).arity.zero?
+              target_instance.call(&method_block)
             else
-              delegate_instance.call(*args, &method_block)
+              target_instance.call(*args, &method_block)
             end
           end
           local_cast_methods << name
