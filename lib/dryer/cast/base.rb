@@ -1,4 +1,5 @@
 require "active_support/core_ext/string"
+require "dryer/cast/cast_group"
 module Dryer
   module Cast
     def self.base
@@ -28,7 +29,7 @@ module Dryer
 
       def define_cast_group_singleton(klass)
         klass.define_singleton_method :cast_group do |*args, &block|
-          block.call
+          CastGroup.new(klass, *args, &block).wrap
         end
       end
 
