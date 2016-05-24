@@ -1,7 +1,8 @@
-source 'https://rubygems.org'
+source "https://rubygems.org"
 
 gemspec
 
 group :tools do
-  gem 'rubocop'
+  gem "rubocop"
 end
+gem "activesupport"
