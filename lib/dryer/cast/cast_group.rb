@@ -12,6 +12,7 @@ module Dryer
       end
 
       private
+
       attr_reader :caster, :block, :defaults
 
       def cast(*args)

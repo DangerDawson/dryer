@@ -2,10 +2,6 @@ require "active_support/core_ext/string"
 require "dryer/cast/cast_group"
 module Dryer
   module Cast
-    def self.base
-      ::Dryer::Cast::Base.new
-    end
-
     class Base < Module
       attr_accessor :cast_methods
       def initialize
@@ -32,7 +28,7 @@ module Dryer
         end
       end
 
-      def define_cast_singleton(klass, &block)
+      def define_cast_singleton(klass)
         local_cast_methods = cast_methods
         klass.define_singleton_method(:cast) do |*macro_args, &_macro_block|
           name = macro_args.shift
