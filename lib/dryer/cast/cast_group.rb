@@ -1,7 +1,7 @@
 module Dryer
   module Cast
     class CastGroup
-      def initialize(caster, *defaults, &block)
+      def initialize(caster, defaults, &block)
         @caster = caster
         @block = block
         @defaults = defaults
@@ -15,18 +15,18 @@ module Dryer
 
       attr_reader :caster, :block, :defaults
 
-      def cast(*args)
-        caster.cast(*merge_params(*args))
+      def cast(name, args = {})
+        merged_args = merge_args(args)
+        caster.cast(name, merged_args)
       end
 
-      def cast_group(*args, &block)
-        caster.cast_group(*merge_params(*args), &block)
+      def cast_group(args, &block)
+        merged_args = merge_args(args)
+        caster.cast_group(merged_args, &block)
       end
 
-      def merge_params(*args)
-        name = args.shift
-        args = (defaults + args).reduce({}, :merge)
-        [name, args]
+      def merge_args(args)
+        args.each_with_object(defaults.dup) { |(k, v), o| o[k] = o[k] ? [*o[k]] + [v] : v }
       end
     end
   end
