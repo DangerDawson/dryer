@@ -3,6 +3,9 @@ RSpec.describe Dryer::Cast do
     let(:klass) do
       Class.new do
         include Dryer::Cast
+        def self.name
+          "CasterClass"
+        end
       end
     end
 
@@ -112,6 +115,16 @@ RSpec.describe Dryer::Cast do
 
           it "defines the casted method" do
             expect(foobar).to receive(:new)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+
+        context "with :self" do
+          let(:with_args) { [method: :self] }
+
+          it "defines the casted method" do
+            expected_args = { method: instance }
+            expect(foobar).to receive(:new).with(expected_args)
             expect(instance.foobar).to eq :bar
           end
         end
