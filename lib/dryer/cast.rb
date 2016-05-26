@@ -39,7 +39,7 @@ module Dryer
             constructor_params = constructor_args.each_with_object({}) do |method, object|
               if method.class == Hash
                 method.each_with_object(object) do |(method2, local_method), object2|
-                  object2[method2] = send(local_method)
+                  object2[method2] = local_method == :self ? self : send(local_method)
                 end
               else
                 object[method] = send(method)
