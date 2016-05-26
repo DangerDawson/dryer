@@ -1,13 +1,13 @@
-RSpec.describe Dryer::Cast::Base do
+RSpec.describe Dryer::Cast do
   describe "It can be included without a default module" do
     let(:klass) do
       Class.new do
-        include Dryer::Cast::Base
+        include Dryer::Cast
       end
     end
 
     it "Properly includes Dryer::Cast::Send" do
-      expect(klass.included_modules.any?{ |m| m == Dryer::Cast::Base }).to be_truthy
+      expect(klass.included_modules.any?{ |m| m == Dryer::Cast }).to be_truthy
     end
     it "defines the cast macro" do
       expect(klass).to respond_to(:cast)
