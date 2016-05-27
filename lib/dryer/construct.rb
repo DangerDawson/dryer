@@ -25,6 +25,7 @@ module Dryer
             keys = required + optional.keys
             local_klass.__send__(:attr_reader, *keys)
             local_klass.__send__(:private, *keys)
+            freeze
           end
         end
       end
