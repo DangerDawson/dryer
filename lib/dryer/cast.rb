@@ -64,7 +64,7 @@ module Dryer
           constructor_args = [*options[:with]]
           access = options[:access] ? [*options[:access]].last : :public
           namespace = options[:namespace]
-          memoize = options[:memoize]
+          memoize = options[:memoize] ? true : false
           target_klass = [namespace, options.fetch(:to, name.to_s.classify)].compact.join("::")
 
           define_method(name) do |*args, &method_block|
@@ -82,7 +82,7 @@ module Dryer
               instance_exec(constructor_args, target_klass, *args, &local_eval_target)
             end
           end
-          local_cast_methods[name] = { to: target_klass, with: constructor_args }
+          local_cast_methods[name] = { to: target_klass, with: constructor_args, memoize: memoize }
           __send__(access, name)
         end
       end
