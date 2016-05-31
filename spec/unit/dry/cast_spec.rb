@@ -187,14 +187,6 @@ RSpec.describe Dryer::Cast do
           end
         end
       end
-
-      describe "#cast_methods" do
-        let(:cast_args) { { to: to, with: :foo } }
-        it "defines the casted method" do
-          expected = { foobar: { to: "Foobar", with: [:foo] } }
-          expect(klass.cast_methods).to eq expected
-        end
-      end
     end
 
     describe "#cast_group" do
@@ -261,6 +253,26 @@ RSpec.describe Dryer::Cast do
         it "defines the casted method" do
           expect(foobar).to receive(:new).with(method: instance.method)
           expect(instance.foobar).to eq :foobar
+        end
+      end
+
+      describe "#cast_methods" do
+        let(:to) { "Foobar" }
+        let!(:cast_group_args) { { with: :foo } }
+        let(:cast_args) { { to: to } }
+        context "without specify memoize" do
+          it "defines the casted method" do
+            expected = { foobar: { to: "Foobar", with: [:foo], memoize: false } }
+            expect(klass.cast_methods).to eq expected
+          end
+        end
+
+        context "with specified memoize" do
+          let!(:cast_group_args) { { with: :foo, memoize: true } }
+          it "defines the casted method" do
+            expected = { foobar: { to: "Foobar", with: [:foo], memoize: true } }
+            expect(klass.cast_methods).to eq expected
+          end
         end
       end
     end
