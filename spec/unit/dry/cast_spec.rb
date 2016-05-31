@@ -63,6 +63,35 @@ RSpec.describe Dryer::Cast do
         end
       end
 
+      context "param 'memoize:'" do
+        let(:cast_args) { { to: to, memoize: true } }
+        let(:foobar_instance) { double(:target, call: false) }
+
+        it "defines the casted method" do
+          expect(foobar).to receive(:new).once
+          expect(instance.foobar).to eq false
+          expect(instance.foobar).to eq false
+        end
+
+        context "when caster is frozen" do
+          before { instance.freeze }
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).once
+            expect(instance.foobar).to eq false
+            expect(instance.foobar).to eq false
+          end
+        end
+
+        context "when memoize is not enabled" do
+          let(:cast_args) { { to: to, memoize: false } }
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).twice
+            expect(instance.foobar).to eq false
+            expect(instance.foobar).to eq false
+          end
+        end
+      end
+
       context "param 'with:'" do
         let(:with_args) { [:method] }
         let(:cast_args) { { to: to, with: with_args } }
