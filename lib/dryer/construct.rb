@@ -13,9 +13,10 @@ module Dryer
         klass.define_singleton_method(:construct) do |*args|
           required = args.dup
           optional = required[-1].class == Hash ? required.pop : {}
+          perform_freeze = optional.delete(:freeze) == false ? false : true
           required = required.uniq
 
-          define_method(:initialize) do |initialize_args = {}|
+          define_method(:initialize) do |initialize_args = {}, &block|
             missing = (required - initialize_args.keys)
             raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
             combined = optional.merge(initialize_args)
@@ -25,7 +26,8 @@ module Dryer
             keys = required + optional.keys
             local_klass.__send__(:attr_reader, *keys)
             local_klass.__send__(:private, *keys)
-            freeze
+            block.call if block
+            freeze if perform_freeze
           end
         end
       end
