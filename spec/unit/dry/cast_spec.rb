@@ -90,6 +90,17 @@ RSpec.describe Dryer::Cast do
             expect(instance.foobar).to eq false
           end
         end
+
+        # For situations where it is not possible to initialize the storage before the
+        # constructor is intialized e.g. ActiveRecord
+        context "when storage is not set as part of the initialize" do
+          it "defines the casted method" do
+            instance.remove_instance_variable(:@_memoize_storage)
+            expect(foobar).to receive(:new).once
+            expect(instance.foobar).to eq false
+            expect(instance.foobar).to eq false
+          end
+        end
       end
 
       context "param 'with:'" do

@@ -34,7 +34,7 @@ module Dryer
       end
 
       def eval_target
-        Proc.new do |constructor_args, target_klass, *args|
+        proc do |constructor_args, target_klass, *args|
           constructor_params = constructor_args.each_with_object({}) do |method, object|
             if method.class == Hash
               method.each_with_object(object) do |(method2, local_method), object2|
@@ -58,7 +58,7 @@ module Dryer
         local_cast_methods = @cast_methods
         local_eval_target = eval_target
 
-        klass.define_singleton_method(:cast) do |*macro_args, &_macro_block|
+        klass.define_singleton_method(:cast) do |*macro_args|
           name = macro_args.shift
           options = macro_args.shift || {}
           constructor_args = [*options[:with]]
@@ -67,12 +67,13 @@ module Dryer
           memoize = options[:memoize] ? true : false
           target_klass = [namespace, options.fetch(:to, name.to_s.classify)].compact.join("::")
 
-          define_method(name) do |*args, &method_block|
+          define_method(name) do |*args|
             if memoize
+              @_memoize_storage ||= {}
               @_memoize_storage[name] ||= {}
-              constructor_key = self.frozen? ? object_id : constructor_args
+              constructor_key = frozen? ? object_id : constructor_args
               @_memoize_storage[name][constructor_key] ||= {}
-              if @_memoize_storage[name][constructor_key].has_key?(args)
+              if @_memoize_storage[name][constructor_key].key?(args)
                 @_memoize_storage[name][constructor_key][args]
               else
                 @_memoize_storage[name][constructor_key][args] =
