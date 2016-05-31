@@ -1,10 +1,10 @@
 RSpec.describe Dryer::Construct do
   let(:constructor_args) { [:one, two: 2] }
   let(:klass_eval) do
-    proc do |args|
+    proc do |args, &block|
       Class.new do
         include Dryer::Construct
-        construct(*args)
+        construct(*args, &block)
       end
     end
   end
@@ -52,6 +52,16 @@ RSpec.describe Dryer::Construct do
 
       it "setups constructor correctly" do
         expect { instance }.to_not raise_error
+      end
+    end
+    context "with block param" do
+      let(:constructor_args) { [vehicle: "car"] }
+      let(:block) { proc { @vehicle = vehicle.pluralize } }
+      let!(:klass) { klass_eval.call(constructor_args, &block) }
+      let(:instance) { klass.new }
+
+      it "has acess to instance variables" do
+        expect(instance.send(:vehicle)).to eq("cars")
       end
     end
     context "freeze param" do
