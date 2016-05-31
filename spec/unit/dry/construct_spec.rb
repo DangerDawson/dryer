@@ -54,5 +54,20 @@ RSpec.describe Dryer::Construct do
         expect { instance }.to_not raise_error
       end
     end
+    context "freeze param" do
+      let(:instance) { klass.new(instance1: "foo", instance2: "base") }
+      context "without specify freeze" do
+        let(:constructor_args) { [:instance1, :instance2] }
+        it "setups constructor correctly" do
+          expect(instance.frozen?).to be_truthy
+        end
+        context "with freeze false" do
+          let(:constructor_args) { [freeze: false] }
+          it "setups constructor correctly" do
+            expect(instance.frozen?).to be_falsey
+          end
+        end
+      end
+    end
   end
 end
