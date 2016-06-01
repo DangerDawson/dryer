@@ -44,7 +44,7 @@ module Dryer
               object[method] = send(method)
             end
           end
-          target_instance = target_klass.constantize.new(constructor_params)
+          target_instance = Kernel.const_get(target_klass).new(constructor_params)
 
           if target_instance.method(:call).arity.zero?
             target_instance.call
