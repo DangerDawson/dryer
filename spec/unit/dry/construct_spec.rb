@@ -54,16 +54,18 @@ RSpec.describe Dryer::Construct do
         expect { instance }.to_not raise_error
       end
     end
+
     context "with block param" do
       let(:constructor_args) { [vehicle: "car"] }
-      let(:block) { proc { @vehicle = vehicle.pluralize } }
+      let(:block) { proc { @vehicle = vehicle.capitalize } }
       let!(:klass) { klass_eval.call(constructor_args, &block) }
       let(:instance) { klass.new }
 
       it "has acess to instance variables" do
-        expect(instance.send(:vehicle)).to eq("cars")
+        expect(instance.send(:vehicle)).to eq("Car")
       end
     end
+
     context "freeze param" do
       let(:instance) { klass.new(instance1: "foo", instance2: "base") }
       context "without specify freeze" do

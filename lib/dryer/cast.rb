@@ -1,5 +1,4 @@
 require "dryer/cast/cast_group"
-require "active_support/core_ext/string"
 module Dryer
   module Cast
     module Memoize
@@ -54,9 +53,14 @@ module Dryer
         end
       end
 
+      def camelize(str)
+        str.split("_").map(&:capitalize).join
+      end
+
       def define_cast_singleton(klass)
         local_cast_methods = @cast_methods
         local_eval_target = eval_target
+        local_self = self
 
         klass.define_singleton_method(:cast) do |*macro_args|
           name = macro_args.shift
@@ -65,7 +69,8 @@ module Dryer
           access = options[:access] ? [*options[:access]].last : :public
           namespace = options[:namespace]
           memoize = options[:memoize] ? true : false
-          target_klass = [namespace, options.fetch(:to, name.to_s.classify)].compact.join("::")
+          camelized_name = local_self.send(:camelize, name.to_s)
+          target_klass = [namespace, options.fetch(:to, camelized_name)].compact.join("::")
 
           define_method(name) do |*args|
             if memoize
