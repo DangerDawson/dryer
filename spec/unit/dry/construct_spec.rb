@@ -66,6 +66,17 @@ RSpec.describe Dryer::Construct do
       end
     end
 
+    context "public accessors" do
+      let(:instance) { klass.new(one: 1) }
+      it "can access public accessors" do
+        klass.__send__(:public, :one)
+        expect { instance.one }.to_not raise_error
+        expect { instance.two }.to raise_error(NoMethodError)
+        expect(instance.__send__(:one)).to eq 1
+        expect(instance.__send__(:two)).to eq 2
+      end
+    end
+
     context "freeze param" do
       let(:instance) { klass.new(instance1: "foo", instance2: "base") }
       context "without specify freeze" do

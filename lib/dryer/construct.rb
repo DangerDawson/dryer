@@ -16,16 +16,15 @@ module Dryer
           perform_freeze = optional.delete(:freeze) == false ? false : true
           required = required.uniq
 
+          keys = required + optional.keys
+          local_klass.__send__(:attr_reader, *keys)
+          local_klass.__send__(:private, *keys)
+
           define_method(:initialize) do |initialize_args = {}|
             missing = (required - initialize_args.keys)
             raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
             combined = optional.merge(initialize_args)
-            combined.each do |key, value|
-              instance_variable_set("@#{key}", value)
-            end
-            keys = required + optional.keys
-            local_klass.__send__(:attr_reader, *keys)
-            local_klass.__send__(:private, *keys)
+            combined.each { |key, value| instance_variable_set("@#{key}", value) }
             instance_eval(&block) if block
             freeze if perform_freeze
           end
