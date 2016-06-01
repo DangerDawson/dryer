@@ -32,24 +32,22 @@ module Dryer
         end
       end
 
-      def eval_target
-        proc do |constructor_args, target_klass, *args|
-          constructor_params = constructor_args.each_with_object({}) do |method, object|
-            if method.class == Hash
-              method.each_with_object(object) do |(method2, local_method), object2|
-                object2[method2] = local_method == :self ? self : send(local_method)
-              end
-            else
-              object[method] = send(method)
+      def eval_target(caster, constructor_args, target_klass, *args)
+        constructor_params = constructor_args.each_with_object({}) do |method, object|
+          if method.class == Hash
+            method.each_with_object(object) do |(method2, local_method), object2|
+              object2[method2] = local_method == :self ? caster : caster.__send__(local_method)
             end
-          end
-          target_instance = Kernel.const_get(target_klass).new(constructor_params)
-
-          if target_instance.method(:call).arity.zero?
-            target_instance.call
           else
-            target_instance.call(*args)
+            object[method] = caster.__send__(method)
           end
+        end
+        target_instance = Kernel.const_get(target_klass).new(constructor_params)
+
+        if target_instance.method(:call).arity.zero?
+          target_instance.call
+        else
+          target_instance.call(*args)
         end
       end
 
@@ -59,7 +57,6 @@ module Dryer
 
       def define_cast_singleton(klass)
         local_cast_methods = @cast_methods
-        local_eval_target = eval_target
         local_self = self
 
         klass.define_singleton_method(:cast) do |*macro_args|
@@ -69,7 +66,7 @@ module Dryer
           access = options[:access] ? [*options[:access]].last : :public
           namespace = options[:namespace]
           memoize = options[:memoize] ? true : false
-          camelized_name = local_self.send(:camelize, name.to_s)
+          camelized_name = local_self.__send__(:camelize, name.to_s)
           target_klass = [namespace, options.fetch(:to, camelized_name)].compact.join("::")
 
           define_method(name) do |*args|
@@ -82,10 +79,10 @@ module Dryer
                 @_memoize_storage[name][constructor_key][args]
               else
                 @_memoize_storage[name][constructor_key][args] =
-                  instance_exec(constructor_args, target_klass, *args, &local_eval_target)
+                  local_self.__send__(:eval_target, self, constructor_args, target_klass, *args)
               end
             else
-              instance_exec(constructor_args, target_klass, *args, &local_eval_target)
+              local_self.__send__(:eval_target, self, constructor_args, target_klass, *args)
             end
           end
           local_cast_methods[name] = { to: target_klass, with: constructor_args, memoize: memoize }
