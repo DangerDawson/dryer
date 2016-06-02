@@ -1,9 +1,5 @@
-# A collection of micro-libraries, each intended to encapsulate
-# a common task in Ruby
-require 'pry'
 module Dryer
   class Construct < Module
-
     def included(klass)
       @klass = klass
       define_construct(klass)
@@ -31,32 +27,38 @@ module Dryer
       optional = required[-1].class == Hash ? required.pop : {}
       required = required.uniq
 
+      set_attr_readers(required, optional, access)
+      merge_args(required, optional)
+    end
+
+    def set_attr_readers(required, optional, access)
       keys = required + optional.keys
       @klass.__send__(:attr_reader, *keys)
       @klass.__send__(access, *keys)
+    end
 
+    def merge_args(required, optional)
       @optional.merge!(optional)
       @required.concat(required).uniq
     end
 
+    def define_initialize(local_self, initialize_args, &block)
+      missing = (@required - initialize_args.keys).uniq
+      raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
+      combined = @optional.merge(initialize_args)
+      combined.each { |key, value| local_self.instance_variable_set("@#{key}", value) }
+      local_self.instance_eval(&block) if block
+      local_self.freeze if @freeze
+    end
+
     def define_construct(klass)
-      perform_freeze = @freeze
-      local_self = self
-      local_optional = @optional
-      local_required = @required
-
+      instance_self = self
       klass.define_singleton_method(:construct) do |*args, &block|
-        local_self.private(*args)
-
+        instance_self.private(*args)
         define_method(:initialize) do |initialize_args = {}|
-          missing = (local_required - initialize_args.keys).uniq
-          raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
-          combined = local_optional.merge(initialize_args)
-          combined.each { |key, value| instance_variable_set("@#{key}", value) }
-          instance_eval(&block) if block
-          freeze if perform_freeze
+          instance_self.__send__(:define_initialize, self, initialize_args, &block)
         end
-        local_self
+        instance_self
       end
     end
   end

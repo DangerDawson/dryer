@@ -1,6 +1,6 @@
 RSpec.describe Dryer::Construct do
   let(:constructor_args) { [:one, two: 2] }
-  let(:include_args) { }
+  let(:include_args) {}
   let(:klass_eval) do
     proc do |args, args2, &block|
       Class.new do
@@ -12,7 +12,7 @@ RSpec.describe Dryer::Construct do
   let!(:klass) { klass_eval.call(constructor_args, include_args) }
 
   it "Properly includes Dryer::Constructor" do
-    expect(klass.included_modules.any? { |m| m.kind_of? Dryer::Construct }).to be_truthy
+    expect(klass.included_modules.any? { |m| m.is_a? Dryer::Construct }).to be_truthy
   end
 
   it "has the correct ancestory chain" do
