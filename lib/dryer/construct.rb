@@ -1,17 +1,21 @@
 module Dryer
   module Construct
-    def self.included(klass)
-      base = Dryer::Construct::Base.new(klass: klass)
-      base.define_construct
-    end
+    class << self
+      def included(klass)
+        base = Dryer::Construct::Base.new(klass: klass)
+        base.define_construct
+      end
 
-    def self.config(args = {})
-      Module.new do
-        @config = args
-        def self.included(klass)
-          freeze = @config.fetch(:freeze, true)
-          base = Dryer::Construct::Base.new(klass: klass, freeze: freeze)
-          base.define_construct
+      def config(args = {})
+        Module.new do
+          @config = args
+          class << self
+            def included(klass)
+              freeze = @config.fetch(:freeze, true)
+              base = Dryer::Construct::Base.new(klass: klass, freeze: freeze)
+              base.define_construct
+            end
+          end
         end
       end
     end
