@@ -2,9 +2,9 @@ RSpec.describe Dryer::Construct do
   let(:constructor_args) { [:one, two: 2] }
   let(:include_args) {}
   let(:klass_eval) do
-    proc do |args, args2, &block|
+    proc do |args, _args2, &block|
       Class.new do
-        include Dryer::Construct.new(*args2)
+        include Dryer::Construct # .new(*args2)
         construct(*args, &block)
       end
     end
@@ -12,12 +12,12 @@ RSpec.describe Dryer::Construct do
   let!(:klass) { klass_eval.call(constructor_args, include_args) }
 
   it "Properly includes Dryer::Constructor" do
-    expect(klass.included_modules.any? { |m| m.is_a? Dryer::Construct }).to be_truthy
+    expect(klass.included_modules.any? { |m| m == Dryer::Construct }).to be_truthy
   end
 
   it "has the correct ancestory chain" do
     expect(klass.ancestors[0]).to eq klass
-    expect(klass.ancestors[1]).to be_kind_of Dryer::Construct
+    expect(klass.ancestors[1]).to eq Dryer::Construct
   end
 
   describe "construct" do
@@ -75,9 +75,9 @@ RSpec.describe Dryer::Construct do
     context "public accessors" do
       let(:instance) { klass.new(one: 1, required_public: 3) }
       let(:klass_eval) do
-        proc do |args, args2, &block|
+        proc do |args, _args2, &block|
           Class.new do
-            include Dryer::Construct.new(*args2)
+            include Dryer::Construct
             construct(*args, &block).public(:required_public, optional_public: 4)
           end
         end
@@ -103,15 +103,37 @@ RSpec.describe Dryer::Construct do
 
     context "freeze param" do
       let(:instance) { klass.new(instance1: "foo", instance2: "base") }
+      let(:klass_eval) do
+        proc do |args, args2, &block|
+          Class.new do
+            include Dryer::Construct.config(*args2)
+            construct(*args, &block)
+          end
+        end
+      end
+
+      let(:klass_eval2) do
+        proc do |args, &block|
+          Class.new do
+            include Dryer::Construct
+            construct(*args, &block)
+          end
+        end
+      end
+      let!(:klass2) { klass_eval2.call(constructor_args) }
+      let(:instance2) { klass2.new(instance1: "foo", instance2: "base") }
+
       context "without specify freeze" do
         let(:constructor_args) { [:instance1, :instance2] }
         it "setups constructor correctly" do
           expect(instance.frozen?).to be_truthy
+          expect(instance2.frozen?).to be_truthy
         end
         context "with freeze false" do
           let(:include_args) { [freeze: false] }
           it "setups constructor correctly" do
             expect(instance.frozen?).to be_falsey
+            expect(instance2.frozen?).to be_truthy
           end
         end
       end
