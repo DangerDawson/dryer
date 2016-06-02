@@ -22,6 +22,7 @@ module Dryer
         @required = []
         @optional = {}
         @klass = klass
+        @before_freeze = nil
       end
 
       def public(*args)
@@ -41,9 +42,15 @@ module Dryer
           end
           instance_self
         end
+
+        @klass.define_singleton_method(:before_freeze) do |&block|
+          instance_self.__send__(:before_freeze=, block)
+        end
       end
 
       private
+
+      attr_accessor :before_freeze
 
       def parse_args(args, access)
         required = args.dup
@@ -71,6 +78,7 @@ module Dryer
         combined = @optional.merge(initialize_args)
         combined.each { |key, value| local_self.instance_variable_set("@#{key}", value) }
         local_self.instance_eval(&block) if block
+        local_self.instance_eval(&@before_freeze) if @before_freeze
         local_self.freeze if @freeze
       end
     end

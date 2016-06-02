@@ -138,5 +138,32 @@ RSpec.describe Dryer::Construct do
         end
       end
     end
+
+    describe "#before_freeze" do
+      let(:instance) { klass.new(one: "foo") }
+      let(:klass_eval) do
+        proc do |args, _args2, &block|
+          Class.new do
+            include Dryer::Construct
+            construct(*args, &block)
+            before_freeze do
+              @before_freeze = "foo"
+            end
+            def after_freeze
+              @after_freeze ||= "bar"
+            end
+          end
+        end
+      end
+
+      it "can set an instance variable on a pre frozen object" do
+        expect(instance.instance_variable_get(:@before_freeze)).to eq("foo")
+      end
+
+      it "can not set an instance variable on a pre frozen object" do
+        msg = "can't modify frozen #{klass}"
+        expect { instance.after_freeze }.to raise_error(RuntimeError, msg)
+      end
+    end
   end
 end
