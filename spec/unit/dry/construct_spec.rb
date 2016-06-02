@@ -1,17 +1,23 @@
 RSpec.describe Dryer::Construct do
   let(:constructor_args) { [:one, two: 2] }
+  let(:include_args) { }
   let(:klass_eval) do
-    proc do |args, &block|
+    proc do |args, args2, &block|
       Class.new do
-        include Dryer::Construct
+        include Dryer::Construct.new(*args2)
         construct(*args, &block)
       end
     end
   end
-  let!(:klass) { klass_eval.call(constructor_args) }
+  let!(:klass) { klass_eval.call(constructor_args, include_args) }
 
   it "Properly includes Dryer::Constructor" do
-    expect(klass.included_modules.any? { |m| m == Dryer::Construct }).to be_truthy
+    expect(klass.included_modules.any? { |m| m.kind_of? Dryer::Construct }).to be_truthy
+  end
+
+  it "has the correct ancestory chain" do
+    expect(klass.ancestors[0]).to eq klass
+    expect(klass.ancestors[1]).to be_kind_of Dryer::Construct
   end
 
   describe "construct" do
@@ -58,7 +64,7 @@ RSpec.describe Dryer::Construct do
     context "with block param" do
       let(:constructor_args) { [vehicle: "car"] }
       let(:block) { proc { @vehicle = vehicle.capitalize } }
-      let!(:klass) { klass_eval.call(constructor_args, &block) }
+      let!(:klass) { klass_eval.call(constructor_args, include_args, &block) }
       let(:instance) { klass.new }
 
       it "has acess to instance variables" do
@@ -67,13 +73,31 @@ RSpec.describe Dryer::Construct do
     end
 
     context "public accessors" do
-      let(:instance) { klass.new(one: 1) }
+      let(:instance) { klass.new(one: 1, required_public: 3) }
+      let(:klass_eval) do
+        proc do |args, args2, &block|
+          Class.new do
+            include Dryer::Construct.new(*args2)
+            construct(*args, &block).public(:required_public, optional_public: 4)
+          end
+        end
+      end
+
       it "can access public accessors" do
-        klass.__send__(:public, :one)
-        expect { instance.one }.to_not raise_error
+        expect { instance.one }.to raise_error(NoMethodError)
         expect { instance.two }.to raise_error(NoMethodError)
         expect(instance.__send__(:one)).to eq 1
         expect(instance.__send__(:two)).to eq 2
+        expect(instance.required_public).to eq 3
+        expect(instance.optional_public).to eq 4
+      end
+
+      context "required public keyword missing" do
+        let(:instance) { klass.new(one: 1) }
+
+        it "warns of missing keyword" do
+          expect { instance }.to raise_error(ArgumentError, "missing keyword(s): required_public")
+        end
       end
     end
 
@@ -85,7 +109,7 @@ RSpec.describe Dryer::Construct do
           expect(instance.frozen?).to be_truthy
         end
         context "with freeze false" do
-          let(:constructor_args) { [freeze: false] }
+          let(:include_args) { [freeze: false] }
           it "setups constructor correctly" do
             expect(instance.frozen?).to be_falsey
           end
