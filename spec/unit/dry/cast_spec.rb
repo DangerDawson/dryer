@@ -48,6 +48,14 @@ RSpec.describe Dryer::Cast do
         end
       end
 
+      context "class method" do
+        let(:cast_args) { { class_method: true } }
+
+        it "defines the casted method" do
+          expect(klass.foobar).to eq :bar
+        end
+      end
+
       context "arity" do
         context "with arity greater than zero" do
           it "defines the casted method" do

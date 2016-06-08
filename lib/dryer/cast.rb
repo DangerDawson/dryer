@@ -55,6 +55,12 @@ module Dryer
         str.split("_").map(&:capitalize).join
       end
 
+      def format_access(options)
+        access = options[:access] ? [*options[:access]].last : :public
+        access = access.to_s + "_class_method" if options[:class_method]
+        access
+      end
+
       def define_cast_singleton(klass)
         local_cast_methods = @cast_methods
         local_self = self
@@ -63,13 +69,15 @@ module Dryer
           name = macro_args.shift
           options = macro_args.shift || {}
           constructor_args = [*options[:with]]
-          access = options[:access] ? [*options[:access]].last : :public
+          access = local_self.send(:format_access, options)
           namespace = options[:namespace]
           memoize = options[:memoize] ? true : false
           camelized_name = local_self.__send__(:camelize, name.to_s)
           target_klass = [namespace, options.fetch(:to, camelized_name)].compact.join("::")
 
-          define_method(name) do |*args|
+          method_type = options[:class_method] ? :define_singleton_method : :define_method
+
+          __send__(method_type, name) do |*args|
             if memoize
               @_memoize_storage ||= {}
               @_memoize_storage[name] ||= {}
