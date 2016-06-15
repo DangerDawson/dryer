@@ -12,6 +12,7 @@ RSpec.describe Dryer::Cast do
     it "Properly includes Dryer::Cast::Send" do
       expect(klass.included_modules.any?{ |m| m == Dryer::Cast }).to be_truthy
     end
+
     it "defines the cast macro" do
       expect(klass).to respond_to(:cast)
     end
@@ -96,6 +97,16 @@ RSpec.describe Dryer::Cast do
             expect(foobar).to receive(:new).twice
             expect(instance.foobar).to eq false
             expect(instance.foobar).to eq false
+          end
+        end
+
+        context "isolation of memoize per instance" do
+          let(:instance2) { klass.new }
+
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).twice
+            expect(instance.foobar).to eq false
+            expect(instance2.foobar).to eq false
           end
         end
 
