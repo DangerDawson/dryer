@@ -4,7 +4,7 @@ RSpec.describe Dryer::Construct do
   let(:klass_eval) do
     proc do |args, _args2, &block|
       Class.new do
-        include Dryer::Construct # .new(*args2)
+        include Dryer::Construct
         construct(*args, &block)
       end
     end

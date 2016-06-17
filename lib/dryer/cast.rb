@@ -13,8 +13,11 @@ module Dryer
           @config = args
           class << self
             def included(klass)
+              namespace = @config.fetch(:namespace, nil)
               prepend = @config.fetch(:prepend, true)
-              base = Dryer::Cast::Base.new(klass: klass, prepend: prepend)
+              with = @config.fetch(:with, [])
+              # TODO: Use Expand params
+              base = Dryer::Cast::Base.new(klass: klass, prepend: prepend, namespace: namespace, with: with)
               base.define_cast
             end
           end
@@ -23,8 +26,10 @@ module Dryer
     end
 
     class Base
-      def initialize(klass:, prepend: true)
+      def initialize(klass:, prepend: true, namespace: nil, with: [])
         @prepend = prepend
+        @namespace = namespace
+        @with = [*with]
         @klass = klass
         @cast_methods = {}
         @_memoize_storage = {}
@@ -50,17 +55,18 @@ module Dryer
       def define_cast_singleton
         local_self = self
         local_cast_methods = @cast_methods
-        # _memoize_storage = @_memoize_storage
+        default_with = @with
+        default_namespace = @namespace
 
         @klass.define_singleton_method(:cast) do |*macro_args|
           name = macro_args.shift
           options = macro_args.shift || {}
-          constructor_args = [*options[:with]]
+          constructor_args = [*options[:with]] + default_with
           access = local_self.send(:format_access, options)
           namespace = options[:namespace]
           memoize = options[:memoize] ? true : false
           camelized_name = local_self.__send__(:camelize, name.to_s)
-          target_klass = [namespace, options.fetch(:to, camelized_name)].compact.join("::")
+          target_klass = [default_namespace, namespace, options.fetch(:to, camelized_name)].compact.join("::")
 
           method_type = options[:class_method] ? :define_singleton_method : :define_method
 

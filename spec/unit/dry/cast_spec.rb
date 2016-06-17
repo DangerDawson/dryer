@@ -219,6 +219,103 @@ RSpec.describe Dryer::Cast do
       end
     end
 
+    describe "#config" do
+      let(:klass_eval) do
+        proc do |args, cast_group_args, cast_args|
+          Class.new do
+            include Dryer::Cast.config(args)
+            cast_group cast_group_args do
+              cast :foobar, cast_args
+            end
+            def method
+              "value"
+            end
+
+            def another_method
+              "value"
+            end
+          end
+        end
+      end
+      let(:include_args) { {} }
+      let(:cast_group_args) { {} }
+      let(:cast_args) { {} }
+      let(:foobar_instance) { double(:target, call: :bar) }
+      let(:foobar) { double(to, new: foobar_instance) }
+      let(:to) { "Foobar" }
+      let!(:klass) { klass_eval.call(include_args, cast_group_args, cast_args) }
+      let(:instance) { klass.new }
+
+      context "with no args" do
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method" do
+          expect(instance.foobar).to eq :bar
+        end
+      end
+
+      context "with prepend: false" do
+        before { stub_const("Foobar", foobar) }
+        let(:include_args) { {prepend: false} }
+        it "defines the casted method" do
+          expect(instance.foobar).to eq :bar
+        end
+
+        context "when class is frozen" do
+          let(:cast_args) { {memoize: true} }
+          before { instance.freeze }
+          it "defines the casted method" do
+            expect { instance.foobar }.to raise_error(RuntimeError)
+          end
+        end
+      end
+
+      context "with namespace:" do
+        let(:foobar) { double("One::Foobar", new: double(:target, call: :one_foobar)) }
+        let(:include_args) { {namespace: "One"} }
+        before { stub_const("One::Foobar", foobar) }
+        it "defines the casted method" do
+          expect(instance.foobar).to eq :one_foobar
+        end
+
+        context "with cast_group_args" do
+          let(:foobar) { double("One::Bar::Foobar", new: double(:target, call: :one_bar_foobar)) }
+          let(:cast_group_args) { { namespace: "Bar" } }
+          before { stub_const("One::Bar::Foobar", foobar) }
+          it "defines the casted method" do
+            expect(instance.foobar).to eq :one_bar_foobar
+          end
+        end
+      end
+
+      context "with with:" do
+        let(:include_args) { { with: :method } }
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method with the correct params" do
+          expect(foobar).to receive(:new).with(method: instance.method)
+          expect(instance.foobar).to eq :bar
+        end
+
+        context "cast_args has with as well" do
+          let(:cast_args) { { with: :another_method } }
+          it "merges the with params" do
+            expect(foobar).to receive(:new)
+              .with(method: instance.method, another_method: instance.another_method)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+
+        context "with specified target args" do
+          let(:include_args) { { with: [method: :method] } }
+          let(:cast_args) { { with: [another_method: :another_method] } }
+          it "merges the with params" do
+            expect(foobar).to receive(:new)
+              .with(method: instance.method, another_method: instance.another_method)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+      end
+    end
+
     describe "#cast_group" do
       let(:klass_eval) do
         proc do |cast_group_args, cast_args|
