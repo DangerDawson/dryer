@@ -21,6 +21,36 @@ RSpec.describe Dryer::Construct do
   end
 
   describe "construct" do
+    context "multiple construct in same class" do
+      let(:klass_eval) do
+        proc do |args, args2, args3, args4|
+          Class.new do
+            include Dryer::Construct
+            construct(*args).public(*args2)
+            construct(*args3).public(*args4)
+          end
+        end
+      end
+      let(:constructor_args2) { [:three, four: 4] }
+      let(:constructor_args3) { [:five, six: 6] }
+      let(:constructor_args4) { [:seven, eight: 8] }
+      let!(:klass) do
+        klass_eval.call(constructor_args, constructor_args2, constructor_args3, constructor_args4)
+      end
+      let(:instance) { klass.new(one: 1, three: 3, five: 5, seven: 7) }
+
+      it "setups constructor correctly" do
+        expect(instance.__send__(:one)).to eq 1
+        expect(instance.__send__(:two)).to eq 2
+        expect(instance.three).to eq 3
+        expect(instance.four).to eq 4
+        expect(instance.__send__(:five)).to eq 5
+        expect(instance.__send__(:six)).to eq 6
+        expect(instance.seven).to eq 7
+        expect(instance.eight).to eq 8
+      end
+    end
+
     context "missing required args" do
       let(:instance) { klass.new }
       let(:constructor_args) { [:one, :two, three: 3] }
@@ -138,6 +168,26 @@ RSpec.describe Dryer::Construct do
         end
       end
     end
+
+    # j    context "congig args param" do
+    # #j     let(:klass_eval) do
+    #        proc do |args, args2, &block|
+    #          Class.new do
+    #            include Dryer::Construct.config(*args2)
+    #            construct(*args, &block)
+    #          end
+    #        end
+    #      end
+    #      let(:instance) { klass.new(arg_1: "foo", arg_3: "bar") }
+    #      let(:constructor_args) { [:arg_3] }
+    #      let(:include_args) { [args: [:arg_1, arg_2: 1]] }
+    #
+    #      it "setups constructor correctly" do
+    #        expect(arg_1).to be_truthy
+    #        expect(arg_2).to be_truthy
+    #        expect(arg_3).to be_truthy
+    #      end
+    #    end
 
     describe "#before_freeze" do
       let(:instance) { klass.new(one: "foo") }

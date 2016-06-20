@@ -255,13 +255,13 @@ RSpec.describe Dryer::Cast do
 
       context "with prepend: false" do
         before { stub_const("Foobar", foobar) }
-        let(:include_args) { {prepend: false} }
+        let(:include_args) { { prepend: false } }
         it "defines the casted method" do
           expect(instance.foobar).to eq :bar
         end
 
         context "when class is frozen" do
-          let(:cast_args) { {memoize: true} }
+          let(:cast_args) { { memoize: true } }
           before { instance.freeze }
           it "defines the casted method" do
             expect { instance.foobar }.to raise_error(RuntimeError)
@@ -271,7 +271,7 @@ RSpec.describe Dryer::Cast do
 
       context "with namespace:" do
         let(:foobar) { double("One::Foobar", new: double(:target, call: :one_foobar)) }
-        let(:include_args) { {namespace: "One"} }
+        let(:include_args) { { namespace: "One" } }
         before { stub_const("One::Foobar", foobar) }
         it "defines the casted method" do
           expect(instance.foobar).to eq :one_foobar
