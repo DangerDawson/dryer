@@ -26,7 +26,13 @@ module Dryer
       end
 
       def merge_args(args)
-        args.each_with_object(defaults.dup) { |(k, v), o| o[k] = o[k] ? [*o[k]] + [v] : v }
+        args.each_with_object(defaults.dup) do |(key, value), object|
+          object[key] = if object.key?(key)
+                          [*object[key]] + [*value]
+                        else
+                          value
+                        end
+        end
       end
     end
   end

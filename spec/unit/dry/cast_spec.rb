@@ -485,6 +485,19 @@ RSpec.describe Dryer::Cast do
             expect(instance.foobar).to eq :bar
           end
         end
+
+        context "cast has 'with' as array" do
+          let!(:cast_args) { { with: [:method4] } }
+          it "defines the casted method" do
+            expect(foobar).to receive(:new).with(
+              method1: instance.method1,
+              method2: instance.method2,
+              method3: instance.method3,
+              method4: instance.method4
+            )
+            expect(instance.foobar).to eq :bar
+          end
+        end
       end
 
       context "with args multiple 'namespace'" do
