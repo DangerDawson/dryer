@@ -52,6 +52,16 @@ module Dryer
         end
       end
 
+      # computes the class name completed with the correct namespace
+      # if the to or namespace starts with :: e.g. ::Foobar then it ignores
+      # everything before the ::Foobar
+      def fetch_target_klass(default_namespace, namespace, to)
+        target_klass = [default_namespace, namespace, to].compact.flatten
+        target_klass_start_index = target_klass.rindex { |x| x.to_s.match(/^::/) } || 0
+        reduced_target_klass = target_klass[target_klass_start_index, target_klass.size]
+        reduced_target_klass.join("::")
+      end
+
       def define_cast_singleton
         local_self = self
         local_cast_methods = @cast_methods
@@ -64,13 +74,16 @@ module Dryer
           constructor_args = [*options[:with]] + default_with
           access = local_self.send(:format_access, options)
           namespace = options[:namespace]
+          prefix = options.fetch(:prefix, nil)
           memoize = options[:memoize] ? true : false
           camelized_name = local_self.__send__(:camelize, name.to_s)
-          target_klass = [default_namespace, namespace, options.fetch(:to, camelized_name)].compact.join("::")
+          to = options.fetch(:to, camelized_name)
+          target_klass = local_self.__send__(:fetch_target_klass, default_namespace, namespace, to)
 
           method_type = options[:class_method] ? :define_singleton_method : :define_method
+          method_name = [prefix, name].compact.join("_")
 
-          __send__(method_type, name) do |*args|
+          __send__(method_type, method_name) do |*args, &block|
             if memoize
               @_memoize_storage ||= {}
               @_memoize_storage[name] ||= {}
@@ -80,18 +93,18 @@ module Dryer
                 @_memoize_storage[name][constructor_key][args]
               else
                 @_memoize_storage[name][constructor_key][args] =
-                  local_self.__send__(:eval_target, self, constructor_args, target_klass, *args)
+                  local_self.__send__(:eval_target, self, constructor_args, target_klass, *args, block)
               end
             else
-              local_self.__send__(:eval_target, self, constructor_args, target_klass, *args)
+              local_self.__send__(:eval_target, self, constructor_args, target_klass, *args, block)
             end
           end
           local_cast_methods[name] = { to: target_klass, with: constructor_args, memoize: memoize }
-          __send__(access, name)
+          __send__(access, method_name)
         end
       end
 
-      def eval_target(caster, constructor_args, target_klass, *args)
+      def eval_target(caster, constructor_args, target_klass, *args, block)
         constructor_params = constructor_args.each_with_object({}) do |method, object|
           if method.class == Hash
             method.each_with_object(object) do |(method2, local_method), object2|
@@ -101,12 +114,19 @@ module Dryer
             object[method] = caster.__send__(method)
           end
         end
-        target_instance = Kernel.const_get(target_klass).new(constructor_params)
+
+        # Ensure that we do not send over an empty {} if no args are specified
+        target_klass = Kernel.const_get(target_klass)
+        target_instance = if constructor_params.empty?
+                            target_klass.new
+                          else
+                            target_klass.new(constructor_params)
+                          end
 
         if target_instance.method(:call).arity.zero?
-          target_instance.call
+          target_instance.call(&block)
         else
-          target_instance.call(*args)
+          target_instance.call(*args, &block)
         end
       end
 

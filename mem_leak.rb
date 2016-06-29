@@ -26,4 +26,4 @@ end
 end
 
 GC.start
-puts "Leaked Objects: #{ObjectSpace.each_object(Caster).count}"
+puts "Leaked Caster Objects: #{ObjectSpace.each_object(Caster).count}"
