@@ -72,6 +72,34 @@ RSpec.describe Dryer::Cast do
         end
       end
 
+      context "call takes a block" do
+        let(:dave) { double(:dave) }
+        it "defines the casted method" do
+          expect(foobar_instance).to receive(:call).and_yield(dave)
+          instance.foobar do |arg|
+            expect(arg).to eq dave
+          end
+        end
+
+        context "with an arity greater than zero" do
+          it "defines the casted method" do
+            expect(foobar_instance).to receive(:call).with(param: 1).and_yield(dave)
+            instance.foobar(param: 1) do |arg|
+              expect(arg).to eq dave
+            end
+          end
+        end
+      end
+
+      context "param 'prefix:'" do
+        let(:cast_args) { { to: to, prefix: :uber } }
+        let(:foobar_instance) { double(:target, call: false) }
+
+        it "defines the casted method" do
+          expect(instance.uber_foobar).to eq false
+        end
+      end
+
       context "param 'memoize:'" do
         let(:cast_args) { { to: to, memoize: true } }
         let(:foobar_instance) { double(:target, call: false) }
@@ -173,7 +201,7 @@ RSpec.describe Dryer::Cast do
           let(:with_args) {}
 
           it "defines the casted method" do
-            expect(foobar).to receive(:new)
+            expect(foobar).to receive(:new).with(no_args)
             expect(instance.foobar).to eq :bar
           end
         end
@@ -283,6 +311,15 @@ RSpec.describe Dryer::Cast do
           before { stub_const("One::Bar::Foobar", foobar) }
           it "defines the casted method" do
             expect(instance.foobar).to eq :one_bar_foobar
+          end
+        end
+
+        context "with an overiding namespace" do
+          let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar_foobar)) }
+          let(:cast_group_args) { { namespace: "::Bar" } }
+          before { stub_const("Bar::Foobar", foobar) }
+          it "defines the casted method" do
+            expect(instance.foobar).to eq :bar_foobar
           end
         end
       end
