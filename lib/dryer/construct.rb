@@ -1,9 +1,10 @@
+require "dryer/construct/construct_group"
 module Dryer
   module Construct
     class << self
       def included(klass)
         base = Dryer::Construct::Base.new(klass: klass)
-        base.define_construct
+        base.build_defines
       end
 
       def config(args = {})
@@ -12,8 +13,10 @@ module Dryer
           class << self
             def included(klass)
               freeze = @config.fetch(:freeze, true)
-              base = Dryer::Construct::Base.new(klass: klass, freeze: freeze)
-              base.define_construct
+              namespace = @config.fetch(:namespace, nil)
+              # TODO: Use Expand params
+              base = Dryer::Construct::Base.new(klass: klass, freeze: freeze, namespace: namespace)
+              base.build_defines
             end
           end
         end
@@ -21,8 +24,9 @@ module Dryer
     end
 
     class Base
-      def initialize(klass:, freeze: true)
+      def initialize(klass:, freeze: true, namespace: nil)
         @freeze = freeze
+        @namespace = namespace
         @required = []
         @optional = {}
         @klass = klass
@@ -35,6 +39,22 @@ module Dryer
 
       def private(*args)
         parse_args(args, :private)
+      end
+
+      def build_defines
+        define_construct_group
+        define_construct
+      end
+
+      private
+
+      attr_accessor :before_freeze
+
+      def define_construct_group
+        local_klass = @klass
+        @klass.define_singleton_method :construct_group do |args = {}, &block|
+          ::Dryer::Construct::ConstructGroup.new(local_klass, args, &block).wrap
+        end
       end
 
       def define_construct
@@ -51,10 +71,6 @@ module Dryer
           instance_self.__send__(:before_freeze=, block)
         end
       end
-
-      private
-
-      attr_accessor :before_freeze
 
       def parse_args(args, access)
         required = args.dup
