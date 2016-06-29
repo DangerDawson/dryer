@@ -1,4 +1,5 @@
 require "dryer/cast/cast_group"
+require "dryer/cast/cast_refine"
 require "dryer/cast/memoize"
 module Dryer
   module Cast
@@ -36,6 +37,7 @@ module Dryer
       end
 
       def define_cast
+        define_cast_refine
         define_cast_group_singleton
         define_cast_singleton
         local_cast_methods = @cast_methods
@@ -44,6 +46,13 @@ module Dryer
       end
 
       private
+
+      def define_cast_refine
+        default_namespace = [*@namespace]
+        @klass.define_singleton_method(:cast_refine) do |refine_klass, &block|
+          ::Dryer::Cast::CastRefine.new(default_namespace, refine_klass, &block).refine
+        end
+      end
 
       def define_cast_group_singleton
         local_klass = @klass
