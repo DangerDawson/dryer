@@ -31,8 +31,22 @@ class C
   end
 end
 
+require 'pry'
+class D
+  include Dryer::Cast
+  binding.pry
+  using cast_refine(A) {
+    cast :foobar, to: A
+  }
+
+  def call
+    A.new.foobar
+  end
+end
+
 Benchmark.ips do |bm|
   bm.report("pure_direct") { C.new.direct_a  }
   bm.report("direct") { B.new.direct_a  }
   bm.report("cast") { B.new.cast_a  }
+  bm.report("cast_refine") { D.new.call  }
 end
