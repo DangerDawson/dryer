@@ -1,89 +1,48 @@
 module Dryer
   module Construct
     class << self
-      def included(klass)
-        base = Dryer::Construct::Base.new(klass: klass)
-        base.define_construct
-      end
-
       def config(args = {})
-        Module.new do
-          @config = args
-          class << self
-            def included(klass)
-              freeze = @config.fetch(:freeze, true)
-              base = Dryer::Construct::Base.new(klass: klass, freeze: freeze)
-              base.define_construct
-            end
-          end
-        end
+        Dryer::Construct::Base.new(freeze: freeze)
       end
     end
 
-    class Base
-      def initialize(klass:, freeze: true)
+    class Base < Module
+      def initialize(freeze: true)
         @freeze = freeze
-        @required = []
-        @optional = {}
-        @klass = klass
-        @before_freeze = nil
       end
 
-      def public(*args)
-        parse_args(args, :public)
-      end
+      def included(model)
+        super(model)
+        model.define_singleton_method(:construct) do |*args, &block|
+          before_freeze = nil
+          required = args.dup
+          optional = required[-1].class == Hash ? required.pop : {}
+          required = required.uniq
 
-      def private(*args)
-        parse_args(args, :private)
-      end
-
-      def define_construct
-        instance_self = self
-        @klass.define_singleton_method(:construct) do |*args, &block|
-          instance_self.private(*args)
           define_method(:initialize) do |initialize_args = {}|
-            instance_self.__send__(:define_initialize, self, initialize_args, &block)
+            #super(*initialize_args)
+
+            missing = (required - initialize_args.keys).uniq
+            raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
+
+            combined = optional.merge(initialize_args)
+            combined.each { |key, value| instance_variable_set("@#{key}", value) }
+            instance_eval(&block) if block
+
+            access = :private
+            keys = combined.keys
+            self.class.__send__(:attr_reader, *keys)
+            self.class.__send__(access, *keys)
+
+            instance_eval(&before_freeze) if before_freeze
+
+            freeze if @freeze
           end
-          instance_self
+
+          define_singleton_method(:before_freeze) do |&freeze_block|
+            before_freeze = freeze_block
+          end
         end
-
-        @klass.define_singleton_method(:before_freeze) do |&block|
-          instance_self.__send__(:before_freeze=, block)
-        end
-      end
-
-      private
-
-      attr_accessor :before_freeze
-
-      def parse_args(args, access)
-        required = args.dup
-        optional = required[-1].class == Hash ? required.pop : {}
-        required = required.uniq
-
-        set_attr_readers(required, optional, access)
-        merge_args(required, optional)
-      end
-
-      def set_attr_readers(required, optional, access)
-        keys = required + optional.keys
-        @klass.__send__(:attr_reader, *keys)
-        @klass.__send__(access, *keys)
-      end
-
-      def merge_args(required, optional)
-        @optional.merge!(optional)
-        @required.concat(required).uniq
-      end
-
-      def define_initialize(local_self, initialize_args, &block)
-        missing = (@required - initialize_args.keys).uniq
-        raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
-        combined = @optional.merge(initialize_args)
-        combined.each { |key, value| local_self.instance_variable_set("@#{key}", value) }
-        local_self.instance_eval(&block) if block
-        local_self.instance_eval(&@before_freeze) if @before_freeze
-        local_self.freeze if @freeze
       end
     end
   end
