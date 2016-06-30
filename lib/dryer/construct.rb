@@ -20,8 +20,12 @@ module Dryer
           optional = required[-1].class == Hash ? required.pop : {}
           required = required.uniq
 
+          define_singleton_method(:before_freeze) do |&freeze_block|
+            before_freeze = freeze_block
+          end
+
           define_method(:initialize) do |initialize_args = {}|
-            #super(*initialize_args)
+            super()
 
             missing = (required - initialize_args.keys).uniq
             raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
@@ -36,11 +40,7 @@ module Dryer
 
             instance_eval(&block) if block
             instance_eval(&before_freeze) if before_freeze
-            freeze if local_freeze
-          end
-
-          define_singleton_method(:before_freeze) do |&freeze_block|
-            before_freeze = freeze_block
+            self.freeze if local_freeze
           end
         end
       end

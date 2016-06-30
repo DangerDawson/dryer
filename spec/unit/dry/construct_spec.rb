@@ -12,12 +12,12 @@ RSpec.describe Dryer::Construct do
   let!(:klass) { klass_eval.call(constructor_args, include_args) }
 
   it "Properly includes Dryer::Constructor" do
-    expect(klass.included_modules.any? { |m| m == Dryer::Construct }).to be_truthy
+    expect(klass.included_modules.any? { |m| m.class == Dryer::Construct::Base }).to be_truthy
   end
 
   it "has the correct ancestory chain" do
     expect(klass.ancestors[0]).to eq klass
-    expect(klass.ancestors[1]).to eq Dryer::Construct.config()
+    expect(klass.ancestors[1].class).to eq Dryer::Construct::Base
   end
 
   describe "constructx" do
