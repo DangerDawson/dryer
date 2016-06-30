@@ -2,6 +2,7 @@ module Dryer
   module Construct
     class << self
       def config(args = {})
+        freeze = args.fetch(:freeze, true)
         Dryer::Construct::Base.new(freeze: freeze)
       end
     end
@@ -12,7 +13,7 @@ module Dryer
       end
 
       def included(model)
-        super(model)
+        local_freeze = @freeze
         model.define_singleton_method(:construct) do |*args, &block|
           before_freeze = nil
           required = args.dup
@@ -36,7 +37,7 @@ module Dryer
 
             instance_eval(&before_freeze) if before_freeze
 
-            freeze if @freeze
+            freeze if local_freeze
           end
 
           define_singleton_method(:before_freeze) do |&freeze_block|
