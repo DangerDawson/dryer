@@ -45,7 +45,6 @@ RSpec.describe Dryer::Construct do
 
       it "setups constructor correctly" do
         puts klasses.inspect
-        binding.pry
         expect(instance1.__send__(:one)).to eq 1
         expect(instance1.__send__(:two)).to eq 2
         expect(instance1.three).to eq 3

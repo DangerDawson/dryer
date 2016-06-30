@@ -28,15 +28,14 @@ module Dryer
 
             combined = optional.merge(initialize_args)
             combined.each { |key, value| instance_variable_set("@#{key}", value) }
-            instance_eval(&block) if block
 
             access = :private
             keys = combined.keys
             self.class.__send__(:attr_reader, *keys)
             self.class.__send__(access, *keys)
 
+            instance_eval(&block) if block
             instance_eval(&before_freeze) if before_freeze
-
             freeze if local_freeze
           end
 
