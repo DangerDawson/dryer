@@ -3,51 +3,44 @@ require "dryer/cast/memoize"
 module Dryer
   module Cast
     class << self
-      def included(klass)
-        base = Dryer::Cast::Base.new(klass: klass)
-        base.define_cast
+      def config(args = {})
+        namespace = args.fetch(:namespace, nil)
+        prepend = args.fetch(:prepend, true)
+        with = args.fetch(:with, [])
+        Dryer::Cast::Base.new(prepend: prepend, namespace: namespace, with: with)
       end
 
-      def config(args = {})
-        Module.new do
-          @config = args
-          class << self
-            def included(klass)
-              namespace = @config.fetch(:namespace, nil)
-              prepend = @config.fetch(:prepend, true)
-              with = @config.fetch(:with, [])
-              # TODO: Use Expand params
-              base = Dryer::Cast::Base.new(klass: klass, prepend: prepend, namespace: namespace, with: with)
-              base.define_cast
-            end
-          end
-        end
+      def included(klass)
+        construct = Dryer::Cast::Base.new
+        construct.define_cast(klass)
       end
     end
 
-    class Base
-      def initialize(klass:, prepend: true, namespace: nil, with: [])
+    class Base < Module
+      def initialize(prepend: true, namespace: nil, with: [])
         @prepend = prepend
         @namespace = namespace
         @with = [*with]
-        @klass = klass
-        @cast_methods = {}
         @_memoize_storage = {}
+        freeze
       end
 
-      def define_cast
-        define_cast_group_singleton
-        define_cast_singleton
-        local_cast_methods = @cast_methods
-        @klass.define_singleton_method(:cast_methods) { local_cast_methods }
-        @klass.prepend Dryer::Cast::Memoize if @prepend
+      def included(klass)
+        super(klass)
+        define_cast(klass)
+      end
+
+      def define_cast(klass)
+        define_cast_group_singleton(klass)
+        define_cast_singleton(klass)
+        klass.prepend Dryer::Cast::Memoize if @prepend
       end
 
       private
 
-      def define_cast_group_singleton
-        local_klass = @klass
-        @klass.define_singleton_method :cast_group do |args = {}, &block|
+      def define_cast_group_singleton(klass)
+        local_klass = klass
+        klass.define_singleton_method :cast_group do |args = {}, &block|
           CastGroup.new(local_klass, args, &block).wrap
         end
       end
@@ -62,13 +55,12 @@ module Dryer
         reduced_target_klass.join("::")
       end
 
-      def define_cast_singleton
+      def define_cast_singleton(klass)
         local_self = self
-        local_cast_methods = @cast_methods
         default_with = @with
         default_namespace = @namespace
 
-        @klass.define_singleton_method(:cast) do |*macro_args|
+        klass.define_singleton_method(:cast) do |*macro_args|
           name = macro_args.shift
           options = macro_args.shift || {}
           constructor_args = [*options[:with]] + default_with
@@ -82,6 +74,10 @@ module Dryer
 
           method_type = options[:class_method] ? :define_singleton_method : :define_method
           method_name = [prefix, name].compact.join("_")
+
+          cast_methods = { name => { to: target_klass, with: constructor_args, memoize: memoize } }
+          cast_methods.merge!(self.cast_methods) if respond_to?(:cast_methods)
+          define_singleton_method(:cast_methods) { cast_methods }
 
           __send__(method_type, method_name) do |*args, &block|
             if memoize
@@ -99,7 +95,6 @@ module Dryer
               local_self.__send__(:eval_target, self, constructor_args, target_klass, *args, block)
             end
           end
-          local_cast_methods[name] = { to: target_klass, with: constructor_args, memoize: memoize }
           __send__(access, method_name)
         end
       end
