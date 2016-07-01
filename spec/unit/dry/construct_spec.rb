@@ -17,70 +17,65 @@ RSpec.describe Dryer::Construct do
 
   it "has the correct ancestory chain" do
     expect(klass.ancestors[0]).to eq klass
-    expect(klass.ancestors[1].class).to eq Dryer::Construct::Base
+    expect(klass.ancestors[1].class).to eq Module
+    expect(klass.ancestors[2].class).to eq Dryer::Construct::Base
   end
 
-  describe "constructx" do
+  describe "construct" do
+
     context "inheritence" do
       let(:klass_eval) do
         proc do |args, args2|
           base = Class.new do
             include Dryer::Construct.config()
+            construct(*args)
           end
           class_one = Class.new(base) do
-            construct(*args).public(*args2)
+            construct(*args2)
           end
 
-          class_two = Class.new(base) do
-          end
-          [class_one, class_two]
+          #class_two = Class.new(base) do
+          #end
+          [class_one]
         end
       end
       let(:constructor_args2) { [:three, four: 4] }
       let!(:klasses) do
         klass_eval.call(constructor_args, constructor_args2)
       end
-      let(:instance1) { klasses[0].new(one: 1, three: 3) }
-      let(:instance2) { klasses[1].new() }
+      let!(:instance1) { klasses[0].new(one: 1, three: 3) }
+      #let(:instance2) { klasses[1].new() }
 
       it "setups constructor correctly" do
-        puts klasses.inspect
         expect(instance1.__send__(:one)).to eq 1
         expect(instance1.__send__(:two)).to eq 2
-        expect(instance1.three).to eq 3
-        expect(instance1.four).to eq 4
+        expect(instance1.__send__(:three)).to eq 3
+        expect(instance1.__send__(:four)).to eq 4
       end
     end
-  end
 
-  describe "construct" do
     context "multiple construct in same class" do
       let(:klass_eval) do
-        proc do |args, args2, args3, args4|
+        proc do |args, args2|
           Class.new do
             include Dryer::Construct.config()
-            construct(*args).public(*args2)
-            construct(*args3).public(*args4)
+            construct(*args)
+            construct(*args2)
           end
         end
       end
+      let(:constructor_args) { [:one, two: 2] }
       let(:constructor_args2) { [:three, four: 4] }
-      let(:constructor_args3) { [:five, six: 6] }
-      let(:constructor_args4) { [:seven, eight: 8] }
       let!(:klass) do
-        klass_eval.call(constructor_args, constructor_args2, constructor_args3, constructor_args4)
+        klass_eval.call(constructor_args, constructor_args2)
       end
-      let(:instance) { klass.new(one: 1, three: 3, five: 5, seven: 7) }
+      let(:instance) { klass.new(one: 1, three: 3) }
 
       it "setups constructor correctly" do
         expect(instance.__send__(:one)).to eq 1
         expect(instance.__send__(:two)).to eq 2
-        expect(instance.three).to eq 3
-        expect(instance.four).to eq 4
-        expect(instance.__send__(:five)).to eq 5
-        expect(instance.__send__(:six)).to eq 6
-        expect(instance.seven).to eq 7
-        expect(instance.eight).to eq 8
+        expect(instance.__send__(:three)).to eq 3
+        expect(instance.__send__(:four)).to eq 4
       end
     end
 
@@ -132,35 +127,6 @@ RSpec.describe Dryer::Construct do
 
       it "has acess to instance variables" do
         expect(instance.send(:vehicle)).to eq("Car")
-      end
-    end
-
-    context "public accessors" do
-      let(:instance) { klass.new(one: 1, required_public: 3) }
-      let(:klass_eval) do
-        proc do |args, _args2, &block|
-          Class.new do
-            include Dryer::Construct.config()
-            construct(*args, &block).public(:required_public, optional_public: 4)
-          end
-        end
-      end
-
-      it "can access public accessors" do
-        expect { instance.one }.to raise_error(NoMethodError)
-        expect { instance.two }.to raise_error(NoMethodError)
-        expect(instance.__send__(:one)).to eq 1
-        expect(instance.__send__(:two)).to eq 2
-        expect(instance.required_public).to eq 3
-        expect(instance.optional_public).to eq 4
-      end
-
-      context "required public keyword missing" do
-        let(:instance) { klass.new(one: 1) }
-
-        it "warns of missing keyword" do
-          expect { instance }.to raise_error(ArgumentError, "missing keyword(s): required_public")
-        end
       end
     end
 
@@ -244,7 +210,7 @@ RSpec.describe Dryer::Construct do
       end
 
       it "can not set an instance variable on a pre frozen object" do
-        msg = "can't modify frozen #{klass}"
+        msg = /can't modify frozen/
         expect { instance.after_freeze }.to raise_error(RuntimeError, msg)
       end
     end

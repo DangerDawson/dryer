@@ -5,15 +5,15 @@ require 'pry'
 
 class Base
   include ::Dryer::Construct.config()
-  #include ::Dryer::Construct.config(freeze: false)
-  construct(base: "base")
+  construct(:dave, base: "base")
   before_freeze do
     @base_freeze = "base_freeze"
   end
 end
 
 class One < Base
-  construct(one: 1)
+  construct(:optional, one: 1)
+  construct(:optional2, three: 3)
   before_freeze do
     @one_freeze = "one_freeze"
   end
@@ -23,6 +23,19 @@ class Two < Base
   construct(two: 2)
   before_freeze do
     @two_freeze = "two_freeze"
+  end
+end
+
+class Dave
+  def initialize(a)
+    super()
+    puts a
+  end
+end
+
+class Dawson
+  def initialize(a)
+    super()
   end
 end
 
@@ -45,14 +58,19 @@ end
 
 #puts AnotherTwo.new
 #puts Three.new
+one = One.new(dave: "dave", optional: "optional", optional2: "optional2")
+two = Two.new(dave: "dave")
 
 puts "One ------------------------------"
-puts One.new.instance_variables
+puts one.instance_variables
 puts "Two ------------------------------"
-puts Two.new.instance_variables
+puts two.instance_variables
+puts "------------------------------"
 
-#puts One.new.__send__(:base)
-#puts One.new.__send__(:one)
+puts one.__send__(:base)
+puts one.__send__(:one)
+puts one.__send__(:optional)
+puts one.__send__(:optional2)
 #puts Two.new.__send__(:base)
 #puts Two.new.__send__(:two)
 #puts Two.new.__send__(:one)
