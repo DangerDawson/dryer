@@ -4,7 +4,7 @@ require "dryer"
 require 'pry'
 
 class Base
-  include ::Dryer::Construct.config()
+  include ::Dryer::Construct#.config()
   construct(:dave, base: "base")
   before_freeze do
     @base_freeze = "base_freeze"

@@ -7,6 +7,11 @@ module Dryer
         freeze = args.fetch(:freeze, true)
         Dryer::Construct::Base.new(freeze: freeze)
       end
+
+      def included(klass)
+        construct = Dryer::Construct::Base.new(freeze: freeze)
+        construct.define_construct(klass)
+      end
     end
 
     class Base < Module
@@ -20,6 +25,10 @@ module Dryer
 
       def included(model)
         super(model)
+        define_construct(model)
+      end
+
+      def define_construct(model)
         local_freeze = @freeze
         local_access = @access
 

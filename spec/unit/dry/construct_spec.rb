@@ -4,7 +4,7 @@ RSpec.describe Dryer::Construct do
   let(:klass_eval) do
     proc do |args, _args2, &block|
       Class.new do
-        include Dryer::Construct.config()
+        include Dryer::Construct
         construct(*args, &block)
       end
     end
@@ -12,13 +12,13 @@ RSpec.describe Dryer::Construct do
   let!(:klass) { klass_eval.call(constructor_args, include_args) }
 
   it "Properly includes Dryer::Constructor" do
-    expect(klass.included_modules.any? { |m| m.class == Dryer::Construct::Base }).to be_truthy
+    expect(klass.included_modules.any? { |m| m == Dryer::Construct }).to be_truthy
   end
 
   it "has the correct ancestory chain" do
     expect(klass.ancestors[0]).to eq klass
-    expect(klass.ancestors[1].class).to eq Module
-    expect(klass.ancestors[2].class).to eq Dryer::Construct::Base
+    expect(klass.ancestors[1]).to eq Dryer::Construct::BaseInitialize
+    expect(klass.ancestors[2]).to eq Dryer::Construct
   end
 
   describe "construct" do
@@ -27,7 +27,7 @@ RSpec.describe Dryer::Construct do
       let(:klass_eval) do
         proc do |args, args2|
           base = Class.new do
-            include Dryer::Construct.config()
+            include Dryer::Construct
             construct(*args)
           end
           class_one = Class.new(base) do
@@ -58,7 +58,7 @@ RSpec.describe Dryer::Construct do
       let(:klass_eval) do
         proc do |args, args2|
           Class.new do
-            include Dryer::Construct.config()
+            include Dryer::Construct
             construct(*args)
             construct(*args2)
           end
@@ -144,7 +144,7 @@ RSpec.describe Dryer::Construct do
       let(:klass_eval2) do
         proc do |args, &block|
           Class.new do
-            include Dryer::Construct.config()
+            include Dryer::Construct
             construct(*args, &block)
           end
         end
@@ -193,7 +193,7 @@ RSpec.describe Dryer::Construct do
       let(:klass_eval) do
         proc do |args, _args2, &block|
           Class.new do
-            include Dryer::Construct.config()
+            include Dryer::Construct
             construct(*args, &block)
             before_freeze do
               @before_freeze = "foo"
