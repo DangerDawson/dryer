@@ -166,12 +166,116 @@ RSpec.describe Dryer::Cast do
         end
 
         it "defines the casted method" do
+          expect(foobar_instance).to receive(:call).with(method: "value")
+          instance.foobar
+        end
+
+        context "single arg" do
+          let(:with_args) { :method }
+          it "defines the casted method" do
+            expect(foobar_instance).to receive(:call).with(method: "value")
+            instance.foobar
+          end
+
+          context "and user specified arg" do
+            it "defines the casted method" do
+              expect(foobar_instance).to receive(:call).with(method: "value", user: 1)
+              instance.foobar(user: 1)
+            end
+          end
+        end
+
+        context "hash arg" do
+          let(:with_args) { [method: :local_method] }
+
+          it "defines the casted method" do
+            expect(foobar_instance).to receive(:call).with(method: instance.local_method)
+            instance.foobar
+          end
+
+          context "and user specified arg" do
+            it "defines the casted method" do
+              expect(foobar_instance).to receive(:call).with(method: instance.local_method, user: 1)
+              instance.foobar(user: 1)
+            end
+          end
+        end
+
+        context "mixed args" do
+          let(:with_args) { [:method, another_method: :local_method] }
+
+          it "defines the casted method" do
+            expected_args = { method: instance.method, another_method: instance.local_method }
+            expect(foobar_instance).to receive(:call).with(expected_args)
+            instance.foobar
+          end
+
+          context "and user specified arg" do
+            it "defines the casted method" do
+              expected_args = { method: instance.method, another_method: instance.local_method }
+              expect(foobar_instance).to receive(:call).with(expected_args.merge(user: 1))
+              instance.foobar(user: 1)
+            end
+          end
+        end
+
+        context "no args" do
+          let(:with_args) {}
+
+          it "defines the casted method" do
+            expect(foobar_instance).to receive(:call).with(no_args)
+            instance.foobar
+          end
+
+          context "and user specified arg" do
+            it "defines the casted method" do
+              expect(foobar_instance).to receive(:call).with(user: 1)
+              instance.foobar(user: 1)
+            end
+          end
+        end
+
+        context "with :self" do
+          let(:with_args) { [method: :self] }
+
+          it "defines the casted method" do
+            expected_args = { method: instance }
+            expect(foobar_instance).to receive(:call).with(expected_args)
+            instance.foobar
+          end
+
+          context "and user specified arg" do
+            it "defines the casted method" do
+              expected_args = { method: instance, user: 1 }
+              expect(foobar_instance).to receive(:call).with(expected_args)
+              instance.foobar(user: 1)
+            end
+          end
+        end
+      end
+
+      context "param 'construct:'" do
+        let(:construct_args) { [:method] }
+        let(:cast_args) { { to: to, construct: construct_args } }
+        before do
+          klass.class_eval do
+            def method
+              "value"
+            end
+
+            def local_method
+              "another_value"
+            end
+          end
+        end
+
+        it "defines the casted method" do
           expect(foobar).to receive(:new).with(method: instance.method)
           expect(instance.foobar).to eq :bar
         end
 
         context "single arg" do
-          let(:with_args) { :method }
+          let(:construct_args) { :method }
           it "defines the casted method" do
             expect(foobar).to receive(:new).with(method: instance.method)
             expect(instance.foobar).to eq :bar
@@ -179,7 +283,7 @@ RSpec.describe Dryer::Cast do
         end
 
         context "hash arg" do
-          let(:with_args) { [method: :local_method] }
+          let(:construct_args) { [method: :local_method] }
 
           it "defines the casted method" do
             expect(foobar).to receive(:new).with(method: instance.local_method)
@@ -188,7 +292,7 @@ RSpec.describe Dryer::Cast do
         end
 
         context "mixed args" do
-          let(:with_args) { [:method, another_method: :local_method] }
+          let(:construct_args) { [:method, another_method: :local_method] }
 
           it "defines the casted method" do
             expected_args = { method: instance.method, another_method: instance.local_method }
@@ -198,7 +302,7 @@ RSpec.describe Dryer::Cast do
         end
 
         context "no args" do
-          let(:with_args) {}
+          let(:construct_args) {}
 
           it "defines the casted method" do
             expect(foobar).to receive(:new).with(no_args)
@@ -207,7 +311,7 @@ RSpec.describe Dryer::Cast do
         end
 
         context "with :self" do
-          let(:with_args) { [method: :self] }
+          let(:construct_args) { [method: :self] }
 
           it "defines the casted method" do
             expected_args = { method: instance }
@@ -324,18 +428,46 @@ RSpec.describe Dryer::Cast do
         end
       end
 
-      context "with with:" do
-        let(:include_args) { { with: :method } }
+      context "with construct:" do
+        let(:include_args) { { construct: :method } }
         before { stub_const("Foobar", foobar) }
         it "defines the casted method with the correct params" do
           expect(foobar).to receive(:new).with(method: instance.method)
           expect(instance.foobar).to eq :bar
         end
 
-        context "cast_args has with as well" do
-          let(:cast_args) { { with: :another_method } }
-          it "merges the with params" do
+        context "cast_args has construct as well" do
+          let(:cast_args) { { construct: :another_method } }
+          it "merges the construct params" do
             expect(foobar).to receive(:new)
+              .with(method: instance.method, another_method: instance.another_method)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+
+        context "with specified target args" do
+          let(:include_args) { { construct: [method: :method] } }
+          let(:cast_args) { { construct: [another_method: :another_method] } }
+          it "merges the construct params" do
+            expect(foobar).to receive(:new)
+              .with(method: instance.method, another_method: instance.another_method)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+      end
+
+      context "with with:" do
+        let(:include_args) { { with: :method } }
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method with the correct params" do
+          expect(foobar_instance).to receive(:call).with(method: instance.method)
+          expect(instance.foobar).to eq :bar
+        end
+
+        context "cast_args has construct as well" do
+          let(:cast_args) { { with: :another_method } }
+          it "merges the construct params" do
+            expect(foobar_instance).to receive(:call)
               .with(method: instance.method, another_method: instance.another_method)
             expect(instance.foobar).to eq :bar
           end
@@ -344,13 +476,14 @@ RSpec.describe Dryer::Cast do
         context "with specified target args" do
           let(:include_args) { { with: [method: :method] } }
           let(:cast_args) { { with: [another_method: :another_method] } }
-          it "merges the with params" do
-            expect(foobar).to receive(:new)
+          it "merges the construct params" do
+            expect(foobar_instance).to receive(:call)
               .with(method: instance.method, another_method: instance.another_method)
             expect(instance.foobar).to eq :bar
           end
         end
       end
+
     end
 
     describe "#cast_group" do
@@ -410,9 +543,9 @@ RSpec.describe Dryer::Cast do
         end
       end
 
-      context "with with:" do
+      context "with construct:" do
         let(:foobar) { double("Foobar", new: double(:target, call: :foobar)) }
-        let(:cast_group_args) { { with: :method } }
+        let(:cast_group_args) { { construct: :method } }
         before { stub_const("Foobar", foobar) }
         it "defines the casted method" do
           expect(foobar).to receive(:new).with(method: instance.method)
@@ -420,21 +553,32 @@ RSpec.describe Dryer::Cast do
         end
       end
 
+      context "with with:" do
+        let(:foobar_instance) { double(:target, call: :foobar) }
+        let(:foobar) { double("Foobar", new: foobar_instance) }
+        let(:cast_group_args) { { with: :method } }
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method" do
+          expect(foobar_instance).to receive(:call).with(method: instance.method)
+          expect(instance.foobar).to eq :foobar
+        end
+      end
+
       describe "#cast_methods" do
         let(:to) { "Foobar" }
-        let!(:cast_group_args) { { with: :foo } }
+        let!(:cast_group_args) { { construct: :foo, with: :aaa } }
         let(:cast_args) { { to: to } }
         context "without specify memoize" do
           it "defines the casted method" do
-            expected = { foobar: { to: "Foobar", with: [:foo], memoize: false } }
+            expected = { foobar: { to: "Foobar", construct: [:foo], memoize: false, with: [:aaa] } }
             expect(klass.cast_methods).to eq expected
           end
         end
 
         context "with specified memoize" do
-          let!(:cast_group_args) { { with: :foo, memoize: true } }
+          let!(:cast_group_args) { { construct: :foo, with: :aaa, memoize: true } }
           it "defines the casted method" do
-            expected = { foobar: { to: "Foobar", with: [:foo], memoize: true } }
+            expected = { foobar: { to: "Foobar", construct: [:foo], memoize: true, with: [:aaa] } }
             expect(klass.cast_methods).to eq expected
           end
         end
@@ -488,7 +632,7 @@ RSpec.describe Dryer::Cast do
       context "with args" do
         let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar)) }
         let!(:cast_group_args) { { namespace: "Bar" } }
-        let!(:cast_group_args2) { { with: :method1 } }
+        let!(:cast_group_args2) { { construct: :method1 } }
         before { stub_const("Bar::Foobar", foobar) }
         it "defines the casted method" do
           expect(foobar).to receive(:new).with(method1: instance.method1)
@@ -498,8 +642,8 @@ RSpec.describe Dryer::Cast do
 
       context "with args multiple 'with'" do
         let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
-        let!(:cast_group_args) { { with: [:method1, :method2] } }
-        let!(:cast_group_args2) { { with: :method3 } }
+        let!(:cast_group_args) { { construct: [:method1, :method2] } }
+        let!(:cast_group_args2) { { construct: :method3 } }
         before { stub_const("Foobar", foobar) }
         it "defines the casted method" do
           expect(foobar).to receive(:new).with(
@@ -510,8 +654,8 @@ RSpec.describe Dryer::Cast do
           expect(instance.foobar).to eq :bar
         end
 
-        context "cast has 'with'" do
-          let!(:cast_args) { { with: :method4 } }
+        context "cast has 'construct'" do
+          let!(:cast_args) { { construct: :method4 } }
           it "defines the casted method" do
             expect(foobar).to receive(:new).with(
               method1: instance.method1,
@@ -523,8 +667,8 @@ RSpec.describe Dryer::Cast do
           end
         end
 
-        context "cast has 'with' as array" do
-          let!(:cast_args) { { with: [:method4] } }
+        context "cast has 'construct' as array" do
+          let!(:cast_args) { { construct: [:method4] } }
           it "defines the casted method" do
             expect(foobar).to receive(:new).with(
               method1: instance.method1,

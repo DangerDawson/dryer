@@ -6,8 +6,11 @@ module Dryer
       def config(args = {})
         namespace = args.fetch(:namespace, nil)
         prepend = args.fetch(:prepend, true)
+        construct = args.fetch(:construct, [])
         with = args.fetch(:with, [])
-        Dryer::Cast::Base.new(prepend: prepend, namespace: namespace, with: with)
+        Dryer::Cast::Base.new(
+          prepend: prepend, namespace: namespace, construct: construct, with: with
+        )
       end
 
       def included(klass)
@@ -17,9 +20,10 @@ module Dryer
     end
 
     class Base < Module
-      def initialize(prepend: true, namespace: nil, with: [])
+      def initialize(prepend: true, namespace: nil, construct: [], with: [])
         @prepend = prepend
         @namespace = namespace
+        @construct = [*construct]
         @with = [*with]
         @_memoize_storage = {}
         freeze
@@ -58,12 +62,14 @@ module Dryer
       def define_cast_singleton(klass)
         local_self = self
         default_with = @with
+        default_construct = @construct
         default_namespace = @namespace
 
         klass.define_singleton_method(:cast) do |*macro_args|
           name = macro_args.shift
           options = macro_args.shift || {}
-          constructor_args = [*options[:with]] + default_with
+          constructor_args = [*options[:construct]] + default_construct
+          with_args = [*options[:with]] + default_with
           access = local_self.send(:format_access, options)
           namespace = options[:namespace]
           prefix = options.fetch(:prefix, nil)
@@ -75,11 +81,15 @@ module Dryer
           method_type = options[:class_method] ? :define_singleton_method : :define_method
           method_name = [prefix, name].compact.join("_")
 
-          cast_methods = { name => { to: target_klass, with: constructor_args, memoize: memoize } }
+          cast_methods = { name => { to: target_klass, construct: constructor_args, memoize: memoize, with: with_args } }
           cast_methods.merge!(self.cast_methods) if respond_to?(:cast_methods)
           define_singleton_method(:cast_methods) { cast_methods }
 
           __send__(method_type, method_name) do |*args, &block|
+
+            parsed_args = local_self.__send__(:parse_args, self, with_args)
+            args = local_self.__send__(:merge_args, args, parsed_args)
+
             if memoize
               @_memoize_storage ||= {}
               @_memoize_storage[name] ||= {}
@@ -100,15 +110,7 @@ module Dryer
       end
 
       def eval_target(caster, constructor_args, target_klass, *args, block)
-        constructor_params = constructor_args.each_with_object({}) do |method, object|
-          if method.class == Hash
-            method.each_with_object(object) do |(method2, local_method), object2|
-              object2[method2] = local_method == :self ? caster : caster.__send__(local_method)
-            end
-          else
-            object[method] = caster.__send__(method)
-          end
-        end
+        constructor_params = parse_args(caster, constructor_args)
 
         # Ensure that we do not send over an empty {} if no args are specified
         target_klass = Kernel.const_get(target_klass)
@@ -123,6 +125,31 @@ module Dryer
         else
           target_instance.call(*args, &block)
         end
+      end
+
+      def parse_args(caster, args)
+        args.each_with_object({}) do |method, object|
+          if method.class == Hash
+            method.each_with_object(object) do |(method2, local_method), object2|
+              object2[method2] = local_method == :self ? caster : caster.__send__(local_method)
+            end
+          else
+            object[method] = caster.__send__(method)
+          end
+        end
+      end
+
+
+      def merge_args(args, merge_args)
+        args = args.dup
+        if merge_args.any?
+          if args.last.is_a?(Hash)
+            args << args.pop.merge(merge_args)
+          else
+            args << merge_args
+          end
+        end
+        args
       end
 
       def camelize(str)
