@@ -36,8 +36,8 @@ end
 
 1000.times do
   Caster.new.cast_a
-  Construct.new(one: 1, three: 3) 
-  Construct2.new(one: 1, five: 5) 
+  Construct.new(one: 1, three: 3)
+  Construct2.new(one: 1, five: 5)
 end
 
 GC.start
