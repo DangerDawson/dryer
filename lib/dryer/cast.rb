@@ -49,14 +49,14 @@ module Dryer
         end
       end
 
-      # computes the class name completed with the correct namespace
-      # if the to or namespace starts with :: e.g. ::Foobar then it ignores
-      # everything before the ::Foobar
-      def fetch_target_klass(default_namespace, namespace, to)
-        target_klass = [default_namespace, namespace, to].compact.flatten
-        target_klass_start_index = target_klass.rindex { |x| x.to_s.match(/^::/) } || 0
-        reduced_target_klass = target_klass[target_klass_start_index, target_klass.size]
-        reduced_target_klass.join("::")
+      def fetch_target_klass(default_namespace, options, name)
+        camelized_name = camelize(name.to_s)
+        to = options.fetch(:to, camelized_name)
+        if options[:namespace!]
+          [options[:namespace!], to]
+        else
+          [default_namespace, options[:namespace], to]
+        end.compact.flatten.join("::")
       end
 
       def define_cast_singleton(klass)
@@ -69,14 +69,14 @@ module Dryer
           name = macro_args.shift
           options = macro_args.shift || {}
           constructor_args = [*options[:construct]] + default_construct
-          with_args = [*options[:with]] + default_with
+
+          with_args = options[:with!] ? [*options[:with!]] : [*options[:with]] + default_with
+
           access = local_self.send(:format_access, options)
-          namespace = options[:namespace]
           prefix = options.fetch(:prefix, nil)
           memoize = options[:memoize] ? true : false
-          camelized_name = local_self.__send__(:camelize, name.to_s)
-          to = options.fetch(:to, camelized_name)
-          target_klass = local_self.__send__(:fetch_target_klass, default_namespace, namespace, to)
+
+          target_klass = local_self.__send__(:fetch_target_klass, default_namespace, options, name)
 
           method_type = options[:class_method] ? :define_singleton_method : :define_method
           method_name = [prefix, name].compact.join("_")
@@ -86,7 +86,6 @@ module Dryer
           define_singleton_method(:cast_methods) { cast_methods }
 
           __send__(method_type, method_name) do |*args, &block|
-
             parsed_args = local_self.__send__(:parse_args, self, with_args)
             args = local_self.__send__(:merge_args, args, parsed_args)
 
@@ -99,17 +98,17 @@ module Dryer
                 @_memoize_storage[name][constructor_key][args]
               else
                 @_memoize_storage[name][constructor_key][args] =
-                  local_self.__send__(:eval_target, self, constructor_args, target_klass, *args, block)
+                  local_self.__send__(:call_target, self, constructor_args, target_klass, *args, block)
               end
             else
-              local_self.__send__(:eval_target, self, constructor_args, target_klass, *args, block)
+              local_self.__send__(:call_target, self, constructor_args, target_klass, *args, block)
             end
           end
           __send__(access, method_name)
         end
       end
 
-      def eval_target(caster, constructor_args, target_klass, *args, block)
+      def call_target(caster, constructor_args, target_klass, *args, block)
         constructor_params = parse_args(caster, constructor_args)
 
         # Ensure that we do not send over an empty {} if no args are specified
@@ -120,10 +119,13 @@ module Dryer
                             target_klass.new(constructor_params)
                           end
 
-        if target_instance.method(:call).arity.zero?
-          target_instance.call(&block)
-        else
-          target_instance.call(*args, &block)
+        begin
+          target_arity = target_instance.method(:call).arity
+          target_arity.zero? ? target_instance.call(&block) : target_instance.call(*args, &block)
+        rescue ArgumentError => e
+          raise ArgumentError.new(
+            "class: #{target_klass}, called with: #{args}, but returned error: #{e.message}"
+          )
         end
       end
 
@@ -139,15 +141,14 @@ module Dryer
         end
       end
 
-
       def merge_args(args, merge_args)
         args = args.dup
         if merge_args.any?
-          if args.last.is_a?(Hash)
-            args << args.pop.merge(merge_args)
-          else
-            args << merge_args
-          end
+          args << if args.last.is_a?(Hash)
+                    args.pop.merge(merge_args)
+                  else
+                    merge_args
+                  end
         end
         args
       end

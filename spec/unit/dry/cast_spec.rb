@@ -91,6 +91,15 @@ RSpec.describe Dryer::Cast do
         end
       end
 
+      context "ArgumentError" do
+        before do
+          allow(foobar_instance).to receive(:call).and_raise(ArgumentError.new("asdads"))
+        end
+        it "raises an argument error if incorrect arguments supplied" do
+          expect { instance.foobar(one: 1) }.to raise_error(ArgumentError)
+        end
+      end
+
       context "param 'prefix:'" do
         let(:cast_args) { { to: to, prefix: :uber } }
         let(:foobar_instance) { double(:target, call: false) }
@@ -418,9 +427,9 @@ RSpec.describe Dryer::Cast do
           end
         end
 
-        context "with an overiding namespace" do
+        context "with an overiding namespace e.g. namespace!" do
           let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar_foobar)) }
-          let(:cast_group_args) { { namespace: "::Bar" } }
+          let(:cast_group_args) { { namespace!: "Bar" } }
           before { stub_const("Bar::Foobar", foobar) }
           it "defines the casted method" do
             expect(instance.foobar).to eq :bar_foobar
@@ -482,8 +491,17 @@ RSpec.describe Dryer::Cast do
             expect(instance.foobar).to eq :bar
           end
         end
-      end
 
+        context "with overrideing with e.g. with!" do
+          let(:include_args) { { with: :method_that_gets_overridden } }
+          let(:cast_args) { { with!: :another_method } }
+          it "overridesthe construct with params" do
+            expect(foobar_instance).to receive(:call)
+              .with(another_method: instance.another_method)
+            expect(instance.foobar).to eq :bar
+          end
+        end
+      end
     end
 
     describe "#cast_group" do
@@ -533,6 +551,16 @@ RSpec.describe Dryer::Cast do
         end
       end
 
+      context "with namespace!" do
+        let(:foobar) { double("Bar::Foobar", new: double(:target, call: :bar_foobar)) }
+        let(:cast_group_args) { { namespace: "XXXBar" } }
+        let(:cast_args) { { namespace!: "Bar", to: "Foobar" } }
+        before { stub_const("Bar::Foobar", foobar) }
+        it "overrides the namespace" do
+          expect(instance.foobar).to eq :bar_foobar
+        end
+      end
+
       context "with access:" do
         let(:foobar) { double("Foobar", new: double(:target, call: :foobar)) }
         let(:cast_group_args) { { access: :private } }
@@ -557,6 +585,18 @@ RSpec.describe Dryer::Cast do
         let(:foobar_instance) { double(:target, call: :foobar) }
         let(:foobar) { double("Foobar", new: foobar_instance) }
         let(:cast_group_args) { { with: :method } }
+        before { stub_const("Foobar", foobar) }
+        it "defines the casted method" do
+          expect(foobar_instance).to receive(:call).with(method: instance.method)
+          expect(instance.foobar).to eq :foobar
+        end
+      end
+
+      context "with with!:" do
+        let(:foobar_instance) { double(:target, call: :foobar) }
+        let(:foobar) { double("Foobar", new: foobar_instance) }
+        let(:cast_group_args) { { with: :method_that_gets_overridden } }
+        let(:cast_args) { { with!: :method } }
         before { stub_const("Foobar", foobar) }
         it "defines the casted method" do
           expect(foobar_instance).to receive(:call).with(method: instance.method)
