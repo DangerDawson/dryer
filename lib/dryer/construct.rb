@@ -54,7 +54,10 @@ module Dryer
             unfreeze
 
             missing = (required - initialize_args.keys).uniq
-            raise(ArgumentError, "missing keyword(s): #{missing.join(', ')}") if missing.any?
+            if missing.any?
+              message = "class: #{self.class}, missing keyword(s): #{missing.join(', ')}"
+              raise(ArgumentError, message)
+            end
 
             combined = optional.merge(initialize_args)
             combined.each { |key, value| instance_variable_set("@#{key}", value) }

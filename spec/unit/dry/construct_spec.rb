@@ -87,7 +87,9 @@ RSpec.describe Dryer::Construct do
       let(:constructor_args) { [:one, :two, three: 3] }
 
       it "setups constructor correctly" do
-        expect { instance }.to raise_error(ArgumentError, "missing keyword(s): one, two")
+        expect { instance }.to raise_error(
+          ArgumentError, "class: #{klass}, missing keyword(s): one, two"
+        )
       end
     end
 
