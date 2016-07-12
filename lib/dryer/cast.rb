@@ -1,15 +1,22 @@
 require "dryer/cast/cast_group"
 require "dryer/cast/memoize"
+require "dryer/cast/deep_freeze"
+require "dryer/cast/constantize"
+require "dryer/cast/singleton_storage"
 module Dryer
   module Cast
+    def self.clear_singleton_storage
+      Dryer::Cast::SingletonStorage.clear
+    end
+
     class << self
       def config(args = {})
-        namespace = args.fetch(:namespace, nil)
-        prepend = args.fetch(:prepend, true)
-        construct = args.fetch(:construct, [])
-        with = args.fetch(:with, [])
         Dryer::Cast::Base.new(
-          prepend: prepend, namespace: namespace, construct: construct, with: with
+          prepend:   args.fetch(:prepend, true),
+          namespace: args.fetch(:namespace, nil),
+          construct: args.fetch(:construct, []),
+          with:      args.fetch(:with, []),
+          singleton: args.fetch(:singleton, false)
         )
       end
 
@@ -20,12 +27,16 @@ module Dryer
     end
 
     class Base < Module
-      def initialize(prepend: true, namespace: nil, construct: [], with: [])
+      using Dryer::Cast::DeepFreeze
+      using Dryer::Cast::Constantize
+
+      def initialize(prepend: true, namespace: nil, singleton: false, construct: [], with: [])
         @prepend = prepend
         @namespace = namespace
+        @singleton = singleton
         @construct = [*construct]
         @with = [*with]
-        @_memoize_storage = {}
+        @_singleton_storage = Dryer::Cast::SingletonStorage.register
         freeze
       end
 
@@ -43,37 +54,6 @@ module Dryer
       private
 
       # Stolen from active suport
-      def constantize(camel_cased_word)
-        names = camel_cased_word.split("::".freeze)
-
-        # Trigger a built-in NameError exception including the ill-formed constant in the message.
-        Object.const_get(camel_cased_word) if names.empty?
-
-        # Remove the first blank element in case of '::ClassName' notation.
-        names.shift if names.size > 1 && names.first.empty?
-
-        names.inject(Object) do |constant, name|
-          if constant == Object
-            constant.const_get(name)
-          else
-            candidate = constant.const_get(name)
-            next candidate if constant.const_defined?(name, false)
-            next candidate unless Object.const_defined?(name)
-
-            # Go down the ancestors to check if it is owned directly. The check
-            # stops when we reach Object or the end of ancestors tree.
-            constant = constant.ancestors.inject do |const, ancestor|
-              break const    if ancestor == Object
-              break ancestor if ancestor.const_defined?(name, false)
-              const
-            end
-
-            # owner is in Object, so raise
-            constant.const_get(name, false)
-          end
-        end
-      end
-
       def define_cast_group_singleton(klass)
         local_klass = klass
         klass.define_singleton_method :cast_group do |args = {}, &block|
@@ -96,6 +76,7 @@ module Dryer
         default_with = @with
         default_construct = @construct
         default_namespace = @namespace
+        default_singleton = @singleton
 
         klass.define_singleton_method(:cast) do |*macro_args|
           name = macro_args.shift
@@ -106,6 +87,7 @@ module Dryer
 
           access = local_self.send(:format_access, options)
           prefix = options.fetch(:prefix, nil)
+          singleton = options.fetch(:singleton, default_singleton)
           memoize = options[:memoize] ? true : false
 
           target_klass = local_self.__send__(:fetch_target_klass, default_namespace, options, name)
@@ -121,44 +103,58 @@ module Dryer
             parsed_args = local_self.__send__(:parse_args, self, with_args)
             args = local_self.__send__(:merge_args, args, parsed_args)
 
+            call_target_args = [self, method_type, name, singleton, constructor_args, target_klass, *args, block]
             if memoize
               @_memoize_storage ||= {}
-              @_memoize_storage[name] ||= {}
               constructor_key = frozen? ? object_id : constructor_args
-              @_memoize_storage[name][constructor_key] ||= {}
-              if @_memoize_storage[name][constructor_key].key?(args)
-                @_memoize_storage[name][constructor_key][args]
-              else
-                @_memoize_storage[name][constructor_key][args] =
-                  local_self.__send__(:call_target, self, constructor_args, target_klass, *args, block)
+              key = [name, constructor_key, args]
+              unless @_memoize_storage.key?(key)
+                @_memoize_storage[key] = local_self.__send__(:call_target, *call_target_args)
               end
+              @_memoize_storage[key]
             else
-              local_self.__send__(:call_target, self, constructor_args, target_klass, *args, block)
+              local_self.__send__(:call_target, *call_target_args)
             end
           end
           __send__(access, method_name)
         end
       end
 
-      def call_target(caster, constructor_args, target_klass, *args, block)
+      def build_target_instance(target_klass, caster, constructor_args)
         constructor_params = parse_args(caster, constructor_args)
+        target_klass = target_klass.constantize
+        if constructor_params.empty?
+          target_klass.new
+        else
+          target_klass.new(constructor_params)
+        end
+      end
 
-        # Ensure that we do not send over an empty {} if no args are specified
-        target_klass = constantize(target_klass)
+      def build_instance(target_klass, method_type, name, singleton, caster, constructor_args)
+        if singleton
+          key = [method_type, name]
+          unless @_singleton_storage.key?(key)
+            instance = build_target_instance(target_klass, caster, constructor_args)
+            unless instance.deep_frozen?
+              msg = "singleton error, unfrozen objects detected: #{instance.deep_unfreezable}"
+              raise(DeepFreeze::Error, msg)
+            end
+            @_singleton_storage[key] = instance
+          end
+          @_singleton_storage[key]
+        else
+          build_target_instance(target_klass, caster, constructor_args)
+        end
+      end
 
-        target_instance = if constructor_params.empty?
-                            target_klass.new
-                          else
-                            target_klass.new(constructor_params)
-                          end
-
+      def call_target(caster, method_type, name, singleton, constructor_args, target_klass, *args, block)
+        target_instance = build_instance(target_klass, method_type, name, singleton, caster, constructor_args)
         begin
           target_arity = target_instance.method(:call).arity
           target_arity.zero? ? target_instance.call(&block) : target_instance.call(*args, &block)
         rescue ArgumentError => e
-          raise ArgumentError.new(
-            "class: #{target_klass}, called with: #{args}, but returned error: #{e.message}"
-          )
+          msg = "class: #{target_klass}, called with: #{args}, but returned error: #{e.message}"
+          raise(ArgumentError, msg)
         end
       end
 
@@ -181,7 +177,7 @@ module Dryer
                     args.pop.merge(merge_args)
                   else
                     merge_args
-          end
+                  end
         end
         args
       end

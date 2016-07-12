@@ -1,12 +1,45 @@
 RSpec.describe Dryer::Cast do
-  describe "It can be included without a default module" do
-    let(:klass) do
-      Class.new do
-        include Dryer::Cast
-        def self.name
-          "CasterClass"
+  let(:klass) do
+    Class.new do
+      include Dryer::Cast
+      def self.name
+        "CasterClass"
+      end
+    end
+  end
+
+  describe "clear_singleton_storage" do
+    let(:instance) { klass.new }
+    let(:to) { "Foobar" }
+    let(:foobar_instance) { double(:target, call: :bar) }
+    let(:foobar) { double(to, new: foobar_instance) }
+    let(:method) { :foobar }
+    let(:cast_args) { { to: to, singleton: true } }
+    let(:klass_eval) do
+      proc do |method, cast_args|
+        klass.class_eval do
+          cast method, cast_args
         end
       end
+    end
+
+    before do
+      allow(foobar_instance).to receive(:frozen?).and_return(true)
+      klass_eval.call(method, cast_args)
+      stub_const(to, foobar)
+    end
+
+    it "clears the singleton storage" do
+      instance.foobar
+      expect(Dryer::Cast::SingletonStorage.storage.all?(&:empty?)).to eq false
+      Dryer::Cast::SingletonStorage.clear
+      expect(Dryer::Cast::SingletonStorage.storage.all?(&:empty?)).to eq true
+    end
+  end
+
+  describe "It can be included without a default module" do
+    before do
+      Dryer::Cast.clear_singleton_storage
     end
 
     it "Properly includes Dryer::Cast::Send" do
@@ -106,6 +139,104 @@ RSpec.describe Dryer::Cast do
 
         it "defines the casted method" do
           expect(instance.uber_foobar).to eq false
+        end
+      end
+
+      context "param 'singleton:'" do
+        let(:singleton) { true }
+        let(:cast_args) { { to: to, singleton: singleton } }
+        let(:foobar_instance) { double(:target, call: false, frozen?: true) }
+
+        context "true" do
+          it "accepts frozen objects as its cast target" do
+            expect(instance.foobar).to eq false
+          end
+
+          context "when called twice" do
+            it "only instantiates the object once" do
+              expect(foobar).to receive(:new).once
+              expect(instance.foobar).to eq false
+              expect(instance.foobar).to eq false
+            end
+          end
+
+          context "unfrozen" do
+            before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
+            it "noes not accept frozen objects as its cast target" do
+              expect { instance.foobar }.to raise_error(Dryer::Cast::DeepFreeze::Error)
+            end
+          end
+
+          context "with mixture of class and instance casts" do
+            let(:klass_eval) do
+              proc do |method, cast_args|
+                klass.class_eval do
+                  cast method, cast_args
+                  cast method, cast_args.merge(class_method: true)
+                end
+              end
+            end
+
+            it "only instantiates the object twice" do
+              expect(foobar).to receive(:new).twice
+              expect(klass.foobar).to eq false
+              expect(instance.foobar).to eq false
+              expect(instance.foobar).to eq false
+            end
+          end
+
+          context "with identical names multiple classes" do
+            let(:klass_eval) do
+              proc do |method, cast_args|
+                klass.class_eval do
+                  cast method, cast_args.merge(class_method: true)
+                end
+              end
+            end
+
+            let(:klass2) do
+              Class.new do
+                include Dryer::Cast
+                def self.name
+                  "CasterClass2"
+                end
+              end
+            end
+            let(:klass_eval2) do
+              proc do |method, cast_args|
+                klass2.class_eval do
+                  cast method, cast_args.merge(class_method: true)
+                end
+              end
+            end
+
+            before do
+              klass_eval2.call(method, cast_args)
+            end
+
+            it "instantiates the object twice" do
+              expect(foobar).to receive(:new).twice
+              expect(klass.foobar).to eq false
+              expect(klass2.foobar).to eq false
+            end
+          end
+        end
+
+        context "false" do
+          let(:singleton) { false }
+          context "unfrozen" do
+            before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
+            it "accepts frozen objects as its cast target" do
+              expect(instance.foobar).to eq false
+            end
+          end
+          context "when called twice" do
+            it "only instantiates the object twice" do
+              expect(foobar).to receive(:new).twice
+              expect(instance.foobar).to eq false
+              expect(instance.foobar).to eq false
+            end
+          end
         end
       end
 
@@ -437,6 +568,34 @@ RSpec.describe Dryer::Cast do
         end
       end
 
+      context "param 'singleton:'" do
+        let(:singleton) { true }
+        let(:include_args) { { singleton: singleton } }
+        before { stub_const("Foobar", foobar) }
+
+        context "true" do
+          before { allow(foobar_instance).to receive(:frozen?).and_return(true) }
+          it "accepts frozen objects as its cast target" do
+            expect(instance.foobar).to eq :bar
+          end
+
+          context "unfrozen" do
+            before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
+            it "noes not accept frozen objects as its cast target" do
+              expect { instance.foobar }.to raise_error(Dryer::Cast::DeepFreeze::Error)
+            end
+          end
+        end
+
+        context "false" do
+          let(:singleton) { false }
+          before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
+          it "accepts frozen objects as its cast target" do
+            expect(instance.foobar).to eq :bar
+          end
+        end
+      end
+
       context "with construct:" do
         let(:include_args) { { construct: :method } }
         before { stub_const("Foobar", foobar) }
@@ -518,7 +677,8 @@ RSpec.describe Dryer::Cast do
         end
       end
       let(:instance) { klass.new }
-      let(:foobar) { double("Foobar", new: double(:target, call: :bar)) }
+      let(:foobar) { double("Foobar", new: foobar_instance) }
+      let(:foobar_instance) { double(:target, call: :bar) }
       let!(:cast_group_args) { {} }
       let!(:cast_args) { {} }
       before do
@@ -529,6 +689,37 @@ RSpec.describe Dryer::Cast do
         before { stub_const("Foobar", foobar) }
         it "defines the casted method" do
           expect(instance.foobar).to eq :bar
+        end
+      end
+
+      context "param 'singleton:'" do
+        let(:singleton) { true }
+        let(:cast_group_args) { { singleton: singleton } }
+        let(:foobar_instance) { double(:target, call: false) }
+        before { stub_const("Foobar", foobar) }
+
+        context "true" do
+          before { allow(foobar_instance).to receive(:frozen?).and_return(true) }
+          it "accepts frozen objects as its cast target" do
+            expect(instance.foobar).to eq false
+          end
+
+          context "unfrozen" do
+            before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
+            it "noes not accept frozen objects as its cast target" do
+              expect { instance.foobar }.to raise_error(Dryer::Cast::DeepFreeze::Error)
+            end
+          end
+        end
+
+        context "false" do
+          let(:singleton) { false }
+          context "unfrozen" do
+            before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
+            it "accepts frozen objects as its cast target" do
+              expect(instance.foobar).to eq false
+            end
+          end
         end
       end
 

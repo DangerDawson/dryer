@@ -21,6 +21,16 @@ class Caster
   end
 end
 
+class CasterSingleton
+  include Dryer::Cast
+  include ::Dryer::Construct
+  construct
+
+  cast_group do
+    cast :cast_a, to: Target, singleton: true
+  end
+end
+
 class Base
   include ::Dryer::Construct
   construct(:one, two: 2)
@@ -42,6 +52,7 @@ end
 
 GC.start
 puts "Leaked Caster Objects: #{ObjectSpace.each_object(Caster).count}"
+puts "Leaked Caster Singleton Objects: #{ObjectSpace.each_object(CasterSingleton).count}"
 puts "Leaked Constructer Base Objects: #{ObjectSpace.each_object(Base).count}"
 puts "Leaked Constructer Construct Objects: #{ObjectSpace.each_object(Construct).count}"
 puts "Leaked Constructer Construct2 Objects: #{ObjectSpace.each_object(Construct2).count}"

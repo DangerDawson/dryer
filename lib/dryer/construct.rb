@@ -19,7 +19,7 @@ module Dryer
       def initialize(freeze: true, access: :private)
         @freeze = freeze
         @access = access
-        freeze
+        self.freeze
       end
 
       def included(model)
