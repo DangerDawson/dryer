@@ -1,5 +1,4 @@
 RSpec.describe Dryer::Cast::SingletonStorage do
-
   describe "storage" do
     it "is a concurrent array" do
       expect(described_class.storage).to be_kind_of(Concurrent::Array)
@@ -24,7 +23,7 @@ RSpec.describe Dryer::Cast::SingletonStorage do
       hash1[:key] = :value
       hash2[:key2] = :value2
       described_class.clear
-      expect(described_class.storage).to_not eq include 
+      expect(described_class.storage).to_not eq include
     end
   end
 end
