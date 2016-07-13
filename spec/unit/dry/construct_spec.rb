@@ -52,8 +52,8 @@ RSpec.describe Dryer::Construct do
         expect(instance1.__send__(:four)).to eq 4
         expect(instance2.__send__(:one)).to eq 1
         expect(instance2.__send__(:two)).to eq 2
-        expect { instance2.__send(:three) }.to raise_error(NoMethodError)
-        expect { instance2.__send(:four) }.to raise_error(NoMethodError)
+        expect { instance2.__send__(:three) }.to raise_error(NoMethodError)
+        expect { instance2.__send__(:four) }.to raise_error(NoMethodError)
       end
     end
 
@@ -135,6 +135,32 @@ RSpec.describe Dryer::Construct do
       end
     end
 
+    context "access param" do
+      let(:klass_eval) do
+        proc do |args, include_args, &block|
+          Class.new do
+            include Dryer::Construct.config(include_args)
+            construct(*args, &block)
+          end
+        end
+      end
+      let!(:klass) { klass_eval.call(constructor_args, include_args) }
+      let(:instance) { klass.new(one: "foo", two: "base") }
+
+      context "without specify access" do
+        let(:include_args) { { access: :private } }
+        it "setups constructor correctly" do
+          expect { instance.one }.to raise_error(NoMethodError)
+        end
+        context "with freeze false" do
+          let(:include_args) { { access: :public } }
+          it "setups constructor correctly" do
+            expect(instance.one).to eq("foo")
+          end
+        end
+      end
+    end
+
     context "freeze param" do
       let(:instance) { klass.new(instance1: "foo", instance2: "base") }
       let(:klass_eval) do
@@ -172,26 +198,6 @@ RSpec.describe Dryer::Construct do
         end
       end
     end
-
-    # j    context "congig args param" do
-    # #j     let(:klass_eval) do
-    #        proc do |args, args2, &block|
-    #          Class.new do
-    #            include Dryer::Construct.config(*args2)
-    #            construct(*args, &block)
-    #          end
-    #        end
-    #      end
-    #      let(:instance) { klass.new(arg_1: "foo", arg_3: "bar") }
-    #      let(:constructor_args) { [:arg_3] }
-    #      let(:include_args) { [args: [:arg_1, arg_2: 1]] }
-    #
-    #      it "setups constructor correctly" do
-    #        expect(arg_1).to be_truthy
-    #        expect(arg_2).to be_truthy
-    #        expect(arg_3).to be_truthy
-    #      end
-    #    end
 
     describe "#before_freeze" do
       let(:instance) { klass.new(one: "foo") }

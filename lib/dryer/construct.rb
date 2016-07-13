@@ -5,7 +5,8 @@ module Dryer
     class << self
       def config(args = {})
         freeze = args.fetch(:freeze, true)
-        Dryer::Construct::Base.new(freeze: freeze)
+        access = args.fetch(:access, :private)
+        Dryer::Construct::Base.new(freeze: freeze, access: access)
       end
 
       def included(klass)
