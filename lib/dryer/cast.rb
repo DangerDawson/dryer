@@ -5,10 +5,6 @@ require "dryer/cast/constantize"
 require "dryer/cast/singleton_storage"
 module Dryer
   module Cast
-    def self.clear_singleton_storage
-      Dryer::Cast::SingletonStorage.clear
-    end
-
     class << self
       def config(args = {})
         Dryer::Cast::Base.new(
@@ -23,6 +19,10 @@ module Dryer
       def included(klass)
         construct = Dryer::Cast::Base.new
         construct.define_cast(klass)
+      end
+
+      def clear_singleton_storage
+        Dryer::Cast::SingletonStorage.clear
       end
     end
 
