@@ -1,8 +1,8 @@
 require "dryer/cast/cast_group"
 require "dryer/cast/memoize"
-require "dryer/cast/deep_freeze"
 require "dryer/cast/constantize"
-require "dryer/cast/singleton_storage"
+require "dryer/shared/deep_freeze"
+require "dryer/shared/singleton_storage"
 module Dryer
   module Cast
     class << self
@@ -22,12 +22,12 @@ module Dryer
       end
 
       def clear_singleton_storage
-        Dryer::Cast::SingletonStorage.clear
+        Dryer::Shared::SingletonStorage.clear
       end
     end
 
     class Base < Module
-      using Dryer::Cast::DeepFreeze
+      using Dryer::Shared::DeepFreeze
       using Dryer::Cast::Constantize
 
       def initialize(prepend: true, namespace: nil, singleton: false, construct: [], with: [])
@@ -36,7 +36,7 @@ module Dryer
         @singleton = singleton
         @construct = [*construct]
         @with = [*with]
-        @_singleton_storage = Dryer::Cast::SingletonStorage.register
+        @_singleton_storage = Dryer::Shared::SingletonStorage.register
         freeze
       end
 
@@ -137,7 +137,7 @@ module Dryer
             instance = build_target_instance(target_klass, caster, constructor_args)
             unless instance.deep_frozen?
               msg = "singleton error, unfrozen objects detected: #{instance.deep_unfreezable}"
-              raise(DeepFreeze::Error, msg)
+              raise(Dryer::Shared::DeepFreeze::Error, msg)
             end
             @_singleton_storage[key] = instance
           end

@@ -31,9 +31,9 @@ RSpec.describe Dryer::Cast do
 
     it "clears the singleton storage" do
       instance.foobar
-      expect(Dryer::Cast::SingletonStorage.storage.all?(&:empty?)).to eq false
-      Dryer::Cast::SingletonStorage.clear
-      expect(Dryer::Cast::SingletonStorage.storage.all?(&:empty?)).to eq true
+      expect(Dryer::Shared::SingletonStorage.storage.all?(&:empty?)).to eq false
+      Dryer::Shared::SingletonStorage.clear
+      expect(Dryer::Shared::SingletonStorage.storage.all?(&:empty?)).to eq true
     end
   end
 
@@ -163,7 +163,7 @@ RSpec.describe Dryer::Cast do
           context "unfrozen" do
             before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
             it "noes not accept frozen objects as its cast target" do
-              expect { instance.foobar }.to raise_error(Dryer::Cast::DeepFreeze::Error)
+              expect { instance.foobar }.to raise_error(Dryer::Shared::DeepFreeze::Error)
             end
           end
 
@@ -582,7 +582,7 @@ RSpec.describe Dryer::Cast do
           context "unfrozen" do
             before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
             it "noes not accept frozen objects as its cast target" do
-              expect { instance.foobar }.to raise_error(Dryer::Cast::DeepFreeze::Error)
+              expect { instance.foobar }.to raise_error(Dryer::Shared::DeepFreeze::Error)
             end
           end
         end
@@ -707,7 +707,7 @@ RSpec.describe Dryer::Cast do
           context "unfrozen" do
             before { allow(foobar_instance).to receive(:frozen?).and_return(false) }
             it "noes not accept frozen objects as its cast target" do
-              expect { instance.foobar }.to raise_error(Dryer::Cast::DeepFreeze::Error)
+              expect { instance.foobar }.to raise_error(Dryer::Shared::DeepFreeze::Error)
             end
           end
         end

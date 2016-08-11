@@ -1,6 +1,6 @@
 require "concurrent"
 module Dryer
-  module Cast
+  module Shared
     module SingletonStorage
       @@storage = ::Concurrent::Array.new
 

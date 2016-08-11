@@ -1,4 +1,4 @@
-RSpec.describe Dryer::Cast::SingletonStorage do
+RSpec.describe Dryer::Shared::SingletonStorage do
   describe "storage" do
     it "is a concurrent array" do
       expect(described_class.storage).to be_kind_of(Concurrent::Array)

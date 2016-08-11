@@ -1,5 +1,5 @@
 module Dryer
-  module Cast
+  module Shared
     module DeepFreeze
       class Error < StandardError
       end
