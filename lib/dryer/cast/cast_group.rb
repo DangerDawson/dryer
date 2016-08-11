@@ -20,6 +20,11 @@ module Dryer
         caster.cast(name, merged_args)
       end
 
+      def cast2(name, args = {})
+        merged_args = merge_args(args)
+        caster.cast2(name, merged_args)
+      end
+
       def cast_group(args, &block)
         merged_args = merge_args(args)
         caster.cast_group(merged_args, &block)
