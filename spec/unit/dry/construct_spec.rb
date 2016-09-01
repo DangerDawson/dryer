@@ -225,21 +225,5 @@ RSpec.describe Dryer::Construct do
         expect { instance.after_freeze }.to raise_error(RuntimeError, msg)
       end
     end
-
-    describe "#construct_args" do
-      let(:instance) { klass.new(one: "foo") }
-      let(:klass_eval) do
-        proc do |args, _args2, &block|
-          Class.new do
-            include Dryer::Construct
-            construct(*args, &block)
-          end
-        end
-      end
-
-      it "can set an instance variable on a pre frozen object" do
-        expect(instance.construct_args).to eq(one: "foo", two: 2)
-      end
-    end
   end
 end
