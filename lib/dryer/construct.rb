@@ -12,6 +12,7 @@ module Dryer
       def included(klass)
         construct = Dryer::Construct::Base.new(freeze: freeze)
         construct.define_construct(klass)
+        klass.construct
       end
     end
 
