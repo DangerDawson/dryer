@@ -50,6 +50,10 @@ module Dryer
 
           define_singleton_method(:before_freeze) { |&freeze_block| before_freeze = freeze_block }
 
+          define_method(:construct_args) do
+            construct_keys.each_with_object({}) { |key, object| object[key] = send(key) }
+          end
+
           define_method(:initialize) do |**initialize_args|
             super(**initialize_args)
             unfreeze
@@ -62,6 +66,10 @@ module Dryer
 
             combined = optional.merge(initialize_args)
             combined.each { |key, value| instance_variable_set("@#{key}", value) }
+
+            instance_variable_set("@construct_keys", combined.keys)
+            self.class.__send__(:attr_reader, :construct_keys)
+            self.class.__send__(:private, :construct_keys)
 
             self.class.__send__(:attr_reader, *combined.keys)
             self.class.__send__(local_access, *combined.keys)
