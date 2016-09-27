@@ -153,7 +153,8 @@ module Dryer
           target_arity = target_instance.method(:call).arity
           target_arity.zero? ? target_instance.call(&block) : target_instance.call(*args, &block)
         rescue ArgumentError => e
-          msg = "class: #{target_klass}, called with: #{args}, but returned error: #{e.message}"
+          msg = "class: #{target_klass}, called with: #{args}, but returned error: #{e.message}" \
+            "with backtrace: #{e.backtrace}"
           raise(ArgumentError, msg)
         end
       end
