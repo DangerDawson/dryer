@@ -80,6 +80,19 @@ RSpec.describe Dryer::Construct do
         expect(instance.__send__(:three)).to eq 3
         expect(instance.__send__(:four)).to eq 4
       end
+
+      context "arguments are merged in the correct order" do
+        let(:constructor_args) { [one: 2] }
+        let(:constructor_args2) { [one: 4] }
+        let!(:klass) do
+          klass_eval.call(constructor_args, constructor_args2)
+        end
+        let(:instance) { klass.new }
+
+        it "setups constructor correctly by merging the construct args in correct order" do
+          expect(instance.__send__(:one)).to eq 4
+        end
+      end
     end
 
     context "missing required args" do

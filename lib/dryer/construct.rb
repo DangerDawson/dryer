@@ -34,6 +34,7 @@ module Dryer
         local_access = @access
 
         model.define_singleton_method(:construct) do |*args, &block|
+
           include(BaseInitialize)
 
           before_freeze = nil
@@ -41,9 +42,10 @@ module Dryer
           optional = required[-1].class == Hash ? required.pop : {}
 
           if respond_to?(:optional) || respond_to?(:required)
-            optional.merge!(self.optional)
+            optional = self.optional.merge(optional)
             required += self.required
           end
+
           required = required.uniq
 
           define_singleton_method(:optional) { optional }
