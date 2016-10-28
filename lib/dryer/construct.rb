@@ -10,7 +10,7 @@ module Dryer
       end
 
       def included(klass)
-        construct = Dryer::Construct::Base.new(freeze: freeze)
+        construct = Dryer::Construct::Base.new
         construct.define_construct(klass)
         klass.construct
       end
@@ -34,7 +34,6 @@ module Dryer
         local_access = @access
 
         model.define_singleton_method(:construct) do |*args, &block|
-
           include(BaseInitialize)
 
           before_freeze = nil
