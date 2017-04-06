@@ -1,4 +1,3 @@
-require "dryer/construct/unfreeze"
 require "dryer/construct/base_initialize"
 module Dryer
   module Construct
@@ -17,7 +16,6 @@ module Dryer
     end
 
     class Base < Module
-      using Unfreeze
       def initialize(freeze: true, access: :private)
         @freeze = freeze
         @access = access
@@ -36,41 +34,38 @@ module Dryer
         model.define_singleton_method(:construct) do |*args, &block|
           include(BaseInitialize)
 
-          before_freeze = nil
           required = args.dup
           optional = required[-1].class == Hash ? required.pop : {}
 
-          if respond_to?(:optional) || respond_to?(:required)
-            optional = self.optional.merge(optional)
-            required += self.required
+          define_method(:param) do |*param_args|
+            key, value = param_args
+            if param_args.size > 1
+              instance_variable_set("@#{key}", value)
+            else
+              required << key
+            end
+            self.class.__send__(:attr_reader, key)
+            self.class.__send__(local_access, key)
           end
 
-          required = required.uniq
-
-          define_singleton_method(:optional) { optional }
-          define_singleton_method(:required) { required }
-
-          define_singleton_method(:before_freeze) { |&freeze_block| before_freeze = freeze_block }
-
           define_method(:initialize) do |**initialize_args|
+            _initialize_without_freeze(initialize_args)
+            freeze if local_freeze
+          end
+
+          define_method(:_initialize_without_freeze) do |**initialize_args|
             super(**initialize_args)
-            unfreeze
+
+            combined = optional.merge(initialize_args)
+            combined.each { |key, value| param(key, value) }
+
+            instance_eval(&block) if block
 
             missing = (required - initialize_args.keys).uniq
             if missing.any?
               message = "class: #{self.class}, missing keyword(s): #{missing.join(', ')}"
               raise(ArgumentError, message)
             end
-
-            combined = optional.merge(initialize_args)
-            combined.each { |key, value| instance_variable_set("@#{key}", value) }
-
-            self.class.__send__(:attr_reader, *combined.keys)
-            self.class.__send__(local_access, *combined.keys)
-
-            instance_eval(&block) if block
-            instance_eval(&before_freeze) if before_freeze
-            freeze if local_freeze
           end
         end
       end

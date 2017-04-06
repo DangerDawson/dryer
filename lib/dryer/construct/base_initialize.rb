@@ -3,7 +3,7 @@
 module Dryer
   module Construct
     module BaseInitialize
-      def initialize(_args)
+      def _initialize_without_freeze(_args)
       end
     end
   end

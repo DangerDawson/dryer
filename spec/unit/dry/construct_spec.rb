@@ -57,20 +57,21 @@ RSpec.describe Dryer::Construct do
       end
     end
 
-    context "multiple construct in same class" do
+    context "param method" do
       let(:klass_eval) do
-        proc do |args, args2|
+        proc do |args|
           Class.new do
             include Dryer::Construct
-            construct(*args)
-            construct(*args2)
+            construct(*args) do
+              param :three
+              param :four, 4
+            end
           end
         end
       end
       let(:constructor_args) { [:one, two: 2] }
-      let(:constructor_args2) { [:three, four: 4] }
       let!(:klass) do
-        klass_eval.call(constructor_args, constructor_args2)
+        klass_eval.call(constructor_args)
       end
       let(:instance) { klass.new(one: 1, three: 3) }
 
@@ -79,19 +80,6 @@ RSpec.describe Dryer::Construct do
         expect(instance.__send__(:two)).to eq 2
         expect(instance.__send__(:three)).to eq 3
         expect(instance.__send__(:four)).to eq 4
-      end
-
-      context "arguments are merged in the correct order" do
-        let(:constructor_args) { [one: 2] }
-        let(:constructor_args2) { [one: 4] }
-        let!(:klass) do
-          klass_eval.call(constructor_args, constructor_args2)
-        end
-        let(:instance) { klass.new }
-
-        it "setups constructor correctly by merging the construct args in correct order" do
-          expect(instance.__send__(:one)).to eq 4
-        end
       end
     end
 
@@ -209,33 +197,6 @@ RSpec.describe Dryer::Construct do
             expect(instance2.frozen?).to be_truthy
           end
         end
-      end
-    end
-
-    describe "#before_freeze" do
-      let(:instance) { klass.new(one: "foo") }
-      let(:klass_eval) do
-        proc do |args, _args2, &block|
-          Class.new do
-            include Dryer::Construct
-            construct(*args, &block)
-            before_freeze do
-              @before_freeze = "foo"
-            end
-            def after_freeze
-              @after_freeze ||= "bar"
-            end
-          end
-        end
-      end
-
-      it "can set an instance variable on a pre frozen object" do
-        expect(instance.instance_variable_get(:@before_freeze)).to eq("foo")
-      end
-
-      it "can not set an instance variable on a pre frozen object" do
-        msg = /can't modify frozen/
-        expect { instance.after_freeze }.to raise_error(RuntimeError, msg)
       end
     end
   end
